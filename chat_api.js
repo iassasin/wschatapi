@@ -1,11 +1,11 @@
 'use strict';
 
-var WsChat, PackType, UserStatus, MessageStyle;
+var WsChat, PackType, UserStatus, MessageStyle, ErrorCode;
 
 (function(){
 
 PackType = {
-	bad: 0,
+	error: 0,
 	system: 1,
 	message: 2,
 	online_list: 3,
@@ -36,6 +36,16 @@ MessageStyle = {
 	offtop: 3,
 };
 
+ErrorCode = {
+	unknown: 0,
+	database_error: 1,
+	already_connected: 2,
+	not_found: 3,
+	access_denied: 4,
+	invalid_target: 5,
+	already_exists: 6,
+};
+
 WsChat = function(addr){
 	this.sock = null;
 	this.address = addr;
@@ -45,10 +55,17 @@ WsChat = function(addr){
 WsChat.prototype = {
 	onOpen: function(){},
 	onClose: function(){},
+	onConnectionError: function(error){},
 	onError: function(error){},
+
+	onJoinedRoom: function(target, uinfo){},
+	onLeaveRoom: function(target){},
+	onRoomCreated: function(target){},
+	onRoomRemoved: function(target){},
 
 	onMessage: function(target, msg){},
 	onSysMessage: function(target, text){},
+	onOnlineList: function(target, list){},
 
 	onUserStatusChanged: function(target, user){},
 	onUserConnected: function(target, user){},
@@ -74,7 +91,7 @@ WsChat.prototype = {
 		};
 
 		sock.onerror = function(err){
-			me.onError(err);
+			me.onConnectionError(err);
 		};
 
 		this.sock = sock;
@@ -138,7 +155,7 @@ WsChat.prototype = {
 	},
 
 	removeRoom: function(name, callback){
-		//this.cbManager.add(PackType.remove_room + ':' + name, callback);
+		this.cbManager.add(PackType.remove_room + ':' + name, callback);
 		sendRaw(this, {
 			type: PackType.remove_room,
 			target: name,
@@ -146,10 +163,10 @@ WsChat.prototype = {
 	},
 
 	requestOnlineList: function(target, callback){
-		this.cbManager.add(PackType.online_list + ':' + name, callback);
+		this.cbManager.add(PackType.online_list + ':' + target, callback);
 		sendRaw(this, {
 			type: PackType.online_list,
-			target: name,
+			target: target,
 		});
 	},
 };
@@ -173,12 +190,13 @@ CallbackManager.prototype = {
 		while (i < this.callbacks.length){
 			var el = this.callbacks[i];
 			if (el.key == key){
-				el.cbk.apply(null, [].slice.apply(arguments, [1]));
 				this.callbacks.splice(i, 1);
-				continue;
+				return el.cbk.apply(null, [].slice.apply(arguments, [1])) !== true;
 			}
 			++i;
 		}
+
+		return false;
 	},
 
 	clear: function(){
@@ -186,9 +204,20 @@ CallbackManager.prototype = {
 	},
 };
 
+var processError = function(chat, err){
+	if (err.source == 0 || !chat.cbManager.trigger(err.source + ':' + err.target, {success: false, error: err})){
+		chat.onError(err);
+	}
+};
+
 var processMessage = function(chat, msg){
 	var dt = JSON.parse(msg);
 	switch (dt.type){
+		case PackType.error:
+			delete dt.type;
+			processError(chat, dt);
+			break;
+
 		case PackType.system:
 			chat.onSysMessage(dt.target, dt.message);
 			break;
@@ -199,12 +228,14 @@ var processMessage = function(chat, msg){
 			break;
 
 		case PackType.online_list:
-			chat.cbManager.trigger(dt.type + ':' + dt.target, dt.list);
+			if (!chat.cbManager.trigger(dt.type + ':' + dt.target, {sucess: true, data: dt.list})){
+				chat.onOnlineList(dt.target, dt.list);
+			}
 			break;
 
 		case PackType.auth:
 			delete dt.type;
-			chat.cbManager.trigger(PackType.auth, dt);
+			chat.cbManager.trigger(PackType.auth, {success: true, data: dt});
 			break;
 
 		case PackType.status:
@@ -222,15 +253,28 @@ var processMessage = function(chat, msg){
 			break;
 
 		case PackType.join:
-			chat.cbManager.trigger(dt.type + ':' + dt.target);
+			delete dt.type;
+			if (!chat.cbManager.trigger(PackType.join + ':' + dt.target, {success: true, data: dt})){
+				chat.onJoinedRoom(dt.target, dt);
+			}
 			break;
 
 		case PackType.leave:
-			chat.cbManager.trigger(dt.type + ':' + dt.target);
+			if (!chat.cbManager.trigger(dt.type + ':' + dt.target, {success: true})){
+				chat.onLeaveRoom(dt.target);
+			}
 			break;
 
 		case PackType.create_room:
-			chat.cbManager.trigger(dt.type + ':' + dt.target);
+			if (!chat.cbManager.trigger(dt.type + ':' + dt.target, {success: true})){
+				chat.onRoomCreated(dt.target);
+			}
+			break;
+
+		case PackType.remove_room:
+			if (!chat.cbManager.trigger(dt.type + ':' + dt.target, {success: true})){
+				chat.onRoomRemoved(dt.target);
+			}
 			break;
 
 		case PackType.ping:
@@ -253,6 +297,7 @@ if (typeof module == 'object'){
 	WsChat.PackType = PackType;
 	WsChat.UserStatus = UserStatus;
 	WsChat.MessageStyle = MessageStyle;
+	WsChat.ErrorCode = ErrorCode;
 
 	module.exports = WsChat;
 }
