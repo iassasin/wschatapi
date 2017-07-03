@@ -314,7 +314,7 @@ Room.prototype = {
 	onUserConnected: function(user){ return true; },
 	onUserDisconnected: function(user){ return true; },
 
-	onJoined: function(dt){ return true; },
+	onJoined: function(){ return true; },
 	onLeave: function(){ return true; },
 
 	sendMessage: function(text){
