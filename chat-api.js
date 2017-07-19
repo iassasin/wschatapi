@@ -116,7 +116,13 @@ WsChat.prototype = {
 		});
 	},
 
-	//auth: function(login, password, callback(result))
+	authByApiKey: function(key, callback){
+		this.cbManager.add(PackType.auth, callback);
+		sendRaw(this, {
+			type: PackType.auth,
+			api_key: key,
+		});
+	},
 
 	changeStatus: function(status){
 		sendRaw(this, {
