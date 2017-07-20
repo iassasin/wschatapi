@@ -55,7 +55,7 @@ WsChat = function(addr){
 	this.cbManager = new CallbackManager();
 }
 
-WsChat.version = '1.0.0';
+WsChat.version = '1.1.0';
 
 WsChat.prototype = {
 	onOpen: function(){},
