@@ -12,7 +12,7 @@ const WsChat = require('wschatapi');
 Первым делом нужно создать подключение, затем назначить коллбеки и установить соединение.  
 Ниже приведен пример простого подключения и отправки сообщения:
 ```javascript
-let chat = new WsChat('wss://sinair.ru:8080/chat');
+let chat = new WsChat('wss://sinair.ru/ws/chat');
 chat.onOpen = function(){
 	chat.joinRoom('#test', (success, room) => {
 		room.sendMessage('/nick testbot');
@@ -43,7 +43,7 @@ chat.joinRoom('#chat', function(success, room){
 
 Методы.  
 Ниже будет встречаться параметр `room` - объект класса `Room`.
-* `WsChat(address)` - конструктор класса, `address` - адрес websocket-сервера чата, например `wss://sinair.ru:8080/chat`;
+* `WsChat(address)` - конструктор класса, `address` - адрес websocket-сервера чата, например `wss://sinair.ru/ws/chat`;
 * `open()` - установить соединение с сервером;
 * `close()` - закрыть соединение с сервером;
 * `authByKey(key, callback(success, userinfo))` - выполнить авторизацию на сервере с помощью временного ключа (получается только через сайт авторизованными пользователями);
