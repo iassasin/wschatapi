@@ -55,7 +55,7 @@ WsChat = function(addr){
 	this.cbManager = new CallbackManager();
 }
 
-WsChat.version = '1.1.0';
+WsChat.version = '1.2.0';
 
 WsChat.prototype = {
 	onOpen: function(){},
@@ -132,10 +132,24 @@ WsChat.prototype = {
 	},
 
 	joinRoom: function(name, callback){
-		this.cbManager.add(PackType.join + ':' + name, callback);
+		var args = {
+			target: name,
+			callback: callback,
+			autoLogin: false,
+			loadHistory: false,
+		};
+
+		if (typeof name == 'object'){
+			extend(args, {target: '', callback: null});
+			extend(args, name);
+		}
+
+		this.cbManager.add(PackType.join + ':' + args.target, args.callback);
 		sendRaw(this, {
 			type: PackType.join,
-			target: name,
+			target: args.target,
+			auto_login: args.autoLogin,
+			load_history: args.loadHistory,
 		});
 	},
 
@@ -176,6 +190,13 @@ WsChat.prototype = {
 			}
 		}
 	},
+};
+
+var extend = function(target, obj){
+	for (var el in obj){
+		target[el] = obj[el];
+	}
+	return target;
 };
 
 var requestOnlineList = function(chat, target){

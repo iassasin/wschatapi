@@ -49,7 +49,15 @@ chat.joinRoom('#chat', function(success, room){
 * `authByKey(key, callback(success, userinfo))` - выполнить авторизацию на сервере с помощью временного ключа (получается только через сайт авторизованными пользователями);
 * `authByApiKey(key, callback(success, userinfo))` - выполнить авторизацию на сервере с помощью постоянного API-ключа (получается только посредством связи с администратором чата);
 * `changeStatus(status)` - изменить свой статус. Допустимы только значения `UserStatus.away` и `UserStatus.back`;
-* `joinRoom(target, callback(success, room))` - присоединиться к комнате `target`;
+* `joinRoom(target, callback(success, room))` или `joinRoom(options)` - присоединиться к комнате `target`. Также можно передать вместо аргументов объект опций. Опции по-умолчанию следующие:
+```
+{
+	target: '',
+	callback: null,
+	autoLogin: false, //автоматически войти в комнату с ником, который использовался в ней ранее (для авторизованных пользователей)
+	loadHistory: false, //загрузить последние 50 сообщений в комнате
+}
+```
 * `leaveRoom(target, callback(success, room))` - покинуть комнату `target`;
 * `createRoom(target, callback(success))` - создать комнату с именем `target`;
 * `removeRoom(target, callback(success))` - удалить свою комнату с именем `target`;
