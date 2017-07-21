@@ -27,6 +27,8 @@ UserStatus = {
 	gender_change: 5,
 	color_change: 6,
 	back: 7,
+	typing: 8,
+	stop_typing: 9,
 };
 
 MessageStyle = {
@@ -376,6 +378,14 @@ Room.prototype = {
 	getMyMemberNick: function(){
 		return this.member_login;
 	},
+
+	changeStatus: function(status){
+		sendRaw(this.wschat, {
+			type: PackType.status,
+			target: this.target,
+			status: status,
+		});
+	},
 };
 
 Room.joined = function(room, dt){
@@ -386,6 +396,7 @@ Room.joined = function(room, dt){
 Room.onlineListChanged = function(room, list){
 	for (var i in list){
 		delete list[i].type;
+		list[i].typing = false;
 	}
 	room.members = list;
 
@@ -450,6 +461,14 @@ Room.userStatusChanged = function(room, dt){
 			if (dt.name != ''){
 				room.getMemberById(dt.member_id).color = dt.color;
 			}
+			break;
+
+		case UserStatus.typing:
+			room.getMemberById(dt.member_id).typing = true;
+			break;
+
+		case UserStatus.stop_typing:
+			room.getMemberById(dt.member_id).typing = false;
 			break;
 	}
 

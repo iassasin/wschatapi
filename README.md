@@ -84,6 +84,7 @@ chat.joinRoom('#chat', function(success, room){
 
 Методы:
 * `sendMessage(text)` - отправить сообщение в комнату;
+* `changeStatus(status)` - изменить свой статус. Допустимы только следующие значения `UserStatus`: `away`, `back`, `typing`, `stop_typing`;
 * `getTarget()` - получить имя текущей комнаты;
 * `getMembers()` - получить список онлайна текущей комнаты;
 * `getMemberById(id)` - получить инфо пользователя по его id;
@@ -109,7 +110,9 @@ chat.joinRoom('#chat', function(success, room){
 * `nick_change` - пользователь изменил ник;
 * `gender_change` - пользователь сменил пол;
 * `color_change` - пользователь перекрасил ник;
-* `back` - пользователь вернулся (после статуса `away`).
+* `back` - пользователь вернулся (после статуса `away`);
+* `typing` - пользователь начал набирать сообщение;
+* `stop_typing` - пользователь перестал набирать сообщение.
 
 ### MessageStyle
 Перечисления для определения типа присланного сообщения:
