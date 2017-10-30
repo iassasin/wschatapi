@@ -57,7 +57,7 @@ WsChat = function(addr){
 	this.cbManager = new CallbackManager();
 }
 
-WsChat.version = '1.2.0';
+WsChat.version = '1.3.1';
 
 WsChat.prototype = {
 	onOpen: function(){},
@@ -111,7 +111,7 @@ WsChat.prototype = {
 	},
 
 	authByKey: function(key, callback){
-		this.cbManager.add(PackType.auth, callback);
+		this.cbManager.add(PackType.auth + ':', callback);
 		sendRaw(this, {
 			type: PackType.auth,
 			ukey: key,
@@ -119,7 +119,7 @@ WsChat.prototype = {
 	},
 
 	authByApiKey: function(key, callback){
-		this.cbManager.add(PackType.auth, callback);
+		this.cbManager.add(PackType.auth + ':', callback);
 		sendRaw(this, {
 			type: PackType.auth,
 			api_key: key,
@@ -258,7 +258,7 @@ var processMessage = function(chat, msg){
 
 		case PackType.auth:
 			delete dt.type;
-			chat.cbManager.trigger(PackType.auth, true, dt);
+			chat.cbManager.trigger(PackType.auth + ':', true, dt);
 			break;
 
 		case PackType.status:
