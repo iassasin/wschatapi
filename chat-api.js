@@ -46,6 +46,7 @@ ErrorCode = {
 	access_denied: 4,
 	invalid_target: 5,
 	already_exists: 6,
+	incorrect_loginpass: 7,
 };
 
 // WsChat
@@ -57,7 +58,7 @@ WsChat = function(addr){
 	this.cbManager = new CallbackManager();
 }
 
-WsChat.version = '1.3.1';
+WsChat.version = '1.4.0';
 
 WsChat.prototype = {
 	onOpen: function(){},
@@ -123,6 +124,15 @@ WsChat.prototype = {
 		sendRaw(this, {
 			type: PackType.auth,
 			api_key: key,
+		});
+	},
+
+	authByLoginAndPassword: function(login, password, callback){
+		this.cbManager.add(PackType.auth + ':', callback);
+		sendRaw(this, {
+			type: PackType.auth,
+			login: login,
+			password: password,
 		});
 	},
 
