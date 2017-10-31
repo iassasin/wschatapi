@@ -46,7 +46,6 @@ chat.joinRoom('#chat', function(success, room){
 * `WsChat(address)` - конструктор класса, `address` - адрес websocket-сервера чата, например `wss://sinair.ru/ws/chat`;
 * `open()` - установить соединение с сервером;
 * `close()` - закрыть соединение с сервером;
-* `authByKey(key, callback(success, userinfo))` - выполнить авторизацию на сервере с помощью временного ключа (получается только через сайт авторизованными пользователями);
 * `authByApiKey(key, callback(success, userinfo))` - выполнить авторизацию на сервере с помощью постоянного API-ключа (получается в профиле на сайте, рекомендуется для ботов);
 * `authByLoginAndPassword(login, password, callback(success, userinfo))` - выполнить авторизацию на сервере с помощью логина и пароля (**не рекомендуется для ботов!**);
 * `changeStatus(status)` - изменить свой статус. Допустимы только значения `UserStatus.away` и `UserStatus.back`;
