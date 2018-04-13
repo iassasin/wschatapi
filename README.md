@@ -2,8 +2,9 @@
 API для написания своих клиентов к чату https://sinair.ru/chat/
 ## Установка
 ```
-npm install https://github.com/iassasin/wschatapi.git
+npm install --save https://github.com/iassasin/wschatapi.git ws
 ```
+Для использования в браузере модуль ws устанавливать не нужно.
 ## Использование
 После установки модуля, его использование в проекте аналогично другим:
 ```javascript

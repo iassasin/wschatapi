@@ -1,8 +1,7 @@
 'use strict';
 
+var WebSocket = require('./ws');
 var WsChat, PackType, UserStatus, MessageStyle, ErrorCode;
-
-(function(){
 
 PackType = {
 	error: 0,
@@ -534,15 +533,13 @@ CallbackManager.prototype = {
 	},
 };
 
-})();
+WsChat.PackType = PackType;
+WsChat.UserStatus = UserStatus;
+WsChat.MessageStyle = MessageStyle;
+WsChat.ErrorCode = ErrorCode;
 
-if (typeof module == 'object'){
-	var WebSocket = require('ws');
-
-	WsChat.PackType = PackType;
-	WsChat.UserStatus = UserStatus;
-	WsChat.MessageStyle = MessageStyle;
-	WsChat.ErrorCode = ErrorCode;
-
-	module.exports = WsChat;
+if (typeof window === 'object'){
+	window.WsChat = WsChat;
 }
+
+module.exports = WsChat;
