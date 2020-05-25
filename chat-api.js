@@ -437,6 +437,10 @@ Room.userStatusChanged = function(room, dt){
 			break;
 
 		case UserStatus.offline:
+			if (room.member_id == dt.member_id){
+				room.member_login = '';
+			}
+
 			for (var i in room.members){
 				if (room.members[i].member_id == dt.member_id){
 					room.members.splice(i, 1);
