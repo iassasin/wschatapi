@@ -1,6 +1,6 @@
 {
   "name": "wschatapi",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "description": "SinAir chat api",
   "main": "index.js",
   "author": {

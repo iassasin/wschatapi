@@ -46,6 +46,7 @@ ErrorCode = {
 	invalid_target: 5,
 	already_exists: 6,
 	incorrect_loginpass: 7,
+	user_banned: 8,
 };
 
 // WsChat
