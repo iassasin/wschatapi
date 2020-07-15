@@ -93,6 +93,7 @@ WsChat.prototype = {
 
 		sock.onmessage = function(data){
 			processMessage(me, data.data);
+			console.log(`message`, data.data);
 		};
 
 		sock.onerror = function(err){
@@ -325,7 +326,10 @@ var processMessage = function(chat, msg){
 	}
 };
 
+let seqId = 0;
+
 var sendRaw = function(chat, obj){
+	obj.sequenceId = ++seqId;
 	chat.sock.send(JSON.stringify(obj));
 };
 
