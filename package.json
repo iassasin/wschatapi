@@ -26,7 +26,8 @@
   ],
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "release": ""
+    "build": "rollup -c",
+    "release": "npm run build"
   },
   "license": "MIT",
   "peerDependencies": {
@@ -39,5 +40,9 @@
     "rollup": "^2.21.0",
     "rollup-plugin-terser": "^6.1.0",
     "typescript": "^3.9.6"
+  },
+  "dependencies": {
+    "@rollup/plugin-alias": "^3.1.1",
+    "tslib": "^2.0.0"
   }
 }

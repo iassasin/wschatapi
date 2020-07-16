@@ -1,6 +1,6 @@
 'use strict';
 
-var WebSocket = require('./ws');
+var WebSocket = require('ws');
 var WsChat, PackType, UserStatus, MessageStyle, ErrorCode;
 
 PackType = {

@@ -1,0 +1,15 @@
+{
+	"compilerOptions": {
+		"target": "ES2018",
+		"module": "CommonJS",
+		"allowUnreachableCode": true,
+		"experimentalDecorators": true,
+		"noImplicitThis": true,
+		"noImplicitAny": false,
+		"importHelpers": true,
+		"preserveWatchOutput": true
+	},
+	"include": [
+		"./**/*",
+	]
+}
