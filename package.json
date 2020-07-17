@@ -26,7 +26,8 @@
   ],
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "rollup -c",
+    "build": "NODE_ENV=production rollup -c",
+    "watch": "rollup -cw",
     "release": "npm run build"
   },
   "license": "MIT",
@@ -34,7 +35,6 @@
     "ws": "*"
   },
   "devDependencies": {
-    "@rollup/plugin-commonjs": "^14.0.0",
     "@rollup/plugin-node-resolve": "^8.4.0",
     "@rollup/plugin-typescript": "^5.0.2",
     "rollup": "^2.21.0",

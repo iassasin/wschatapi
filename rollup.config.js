@@ -1,14 +1,26 @@
 import typescript from '@rollup/plugin-typescript';
 import resolve from '@rollup/plugin-node-resolve';
-import commonjs from '@rollup/plugin-commonjs';
 import alias from '@rollup/plugin-alias';
 import {terser} from "rollup-plugin-terser";
 
-const mini = process.env.MINI === '1';
-const watch = process.env.WATCH === '1';
+const production = process.env.NODE_ENV === 'production';
 
 function config(patch = {}) {
 	let {alias: aliases, ...other} = patch;
+	let optinalPlugins = [];
+
+	if (production) {
+		optinalPlugins.push(terser({
+			compress: {
+				ecma: 2018,
+				// inline: 3, // max
+				passes: 2,
+				unsafe_methods: true, // f: function(){} -> f(){}
+				warnings: true,
+			},
+		}));
+	}
+
 	return merge({
 		output: {
 			compact: false,
@@ -25,21 +37,10 @@ function config(patch = {}) {
 		},
 
 		plugins: [
-			typescript({
-
-			}),
+			typescript(),
 			alias({entries: aliases}),
-			resolve({browser: false}),
-			commonjs({extensions: ['.js', '.ts']}),
-			terser({
-				compress: {
-					ecma: 2017,
-					// inline: 3, // max
-					passes: 2,
-					unsafe_methods: true, // f: function(){} -> f(){}
-					warnings: true,
-				},
-			}),
+			resolve(),
+			...optinalPlugins,
 		],
 	}, other);
 }
@@ -59,7 +60,7 @@ export default [config({
 	},
 
 	alias: [
-		{find: 'ws', replacement: __dirname + '/src/ws/browser.js'}
+		{find: 'ws', replacement: __dirname + '/src/ws-browser.ts'}
 	],
 })];
 
