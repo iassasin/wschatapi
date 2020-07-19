@@ -1,69 +1,96 @@
-'use strict';
-
 import WebSocket from 'ws';
+import CallbackManager from './CallbackManager';
+import EventEmitter from './EventEmitter';
+import {PacketType} from './packets';
 
-export const PackType = {
-	error: 0,
-	system: 1,
-	message: 2,
-	online_list: 3,
-	auth: 4,
-	status: 5,
-	join: 6,
-	leave: 7,
-	create_room: 8,
-	remove_room: 9,
-	ping: 10,
+export const enum UserStatus {
+	bad = 0,
+	offline = 1,
+	online = 2,
+	away = 3,
+	nick_change = 4,
+	gender_change = 5,
+	color_change = 6,
+	back = 7,
+	typing = 8,
+	stop_typing = 9,
 };
 
-export const UserStatus = {
-	bad: 0,
-	offline: 1,
-	online: 2,
-	away: 3,
-	nick_change: 4,
-	gender_change: 5,
-	color_change: 6,
-	back: 7,
-	typing: 8,
-	stop_typing: 9,
+export const enum MessageStyle {
+	message = 0,
+	me = 1,
+	event = 2,
+	offtop = 3,
 };
 
-export const MessageStyle = {
-	message: 0,
-	me: 1,
-	event: 2,
-	offtop: 3,
+export interface MessageObject {
+	/** id сообщения, присутствует только у публичных сообщений, в лс отсутствует */
+	id?: string;
+	/** Цвет никнейма отправителя сообщения, любой поддерживаемый css формат цвета */
+	color: string;
+	/** Внутрикомнатный member_id отправителя сообщения */
+	from: number;
+	/** Внутрикомнатный member_id получается сообщения (0, если сообщение публичное) */
+	to: number;
+	/** Никнейм отправителя сообщения */
+	from_login: string;
+	/** Текст сообщения */
+	message: string;
+	/** Тип сообщения (me, do и т.п.) */
+	style: MessageStyle;
+	/** Название комнаты, в которую было отправлено сообщение */
+	target: string;
+	/** Время отправки сообщения в формате unixtime */
+	time: number;
 };
 
-export const ErrorCode = {
-	unknown: 0,
-	database_error: 1,
-	already_connected: 2,
-	not_found: 3,
-	access_denied: 4,
-	invalid_target: 5,
-	already_exists: 6,
-	incorrect_loginpass: 7,
-	user_banned: 8,
-};
+export interface UserObject {
+	/** Цвет никнейма отправителя сообщения, любой поддерживаемый css формат цвета */
+	color: string;
+	/** Данные события (например, при смене никнейма содержит старый никнейм пользователя) */
+	data: string;
+	/** Имеет ли пользователь имеет женский пол */
+	girl: boolean;
+	/** Является ли пользователь модератором комнаты */
+	is_moder: boolean;
+	/** Является ли пользователь создателем комнаты */
+	is_owner: boolean;
+	/** Внутрикомнатный member_id пользователя */
+	member_id: number;
+	/** Никнейм пользователя */
+	name: string;
+	/** Статус пользователя */
+	status: UserStatus;
+	/** ID аккаунта пользователя на sinair.ru (0, если пользователь не авторизирован) */
+	user_id: number;
+	/** Время последнего присутствия пользователя (время перехода в статус away) в формате unixtime */
+	last_seen_time: number;
+}
 
-// WsChat
+export const enum WsChatEvents {
+	open = 'open',
+	close = 'close',
+	error = 'error',
+	connectionError = 'connection-error',
+}
 
-export default class WsChat {
+type WsChatEventsDeclarations = {
+	[WsChatEvents.open]: () => void;
+	[WsChatEvents.close]: () => void;
+	[WsChatEvents.error]: (error: any) => void;
+	[WsChatEvents.connectionError]: (error: Event) => void;
+}
+
+export default class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 	private sock = null as WebSocket;
 	private address: string;
 	rooms = [] as Room[];
 	cbManager = new CallbackManager();
 
 	constructor(addr: string) {
+		super();
 		this.address = addr;
 	}
-
-	onOpen() {}
-	onClose() {}
-	onConnectionError(error: Event) {}
-	onError(error: any) {}
 
 	onJoinedRoom(room: Room) {}
 	onLeaveRoom(room: Room) {}
@@ -82,10 +109,10 @@ export default class WsChat {
 
 		let sock = new WebSocket(this.address);
 
-		sock.onopen = () => this.onOpen();
-		sock.onclose = () => this.onClose();
+		sock.onopen = () => this.emit(WsChatEvents.open);
+		sock.onclose = () => this.emit(WsChatEvents.close);
 		sock.onmessage = data => processMessage(this, data.data);
-		sock.onerror = err => this.onConnectionError(err);
+		sock.onerror = err => this.emit(WsChatEvents.connectionError, err);
 
 		this.sock = sock;
 	}
@@ -98,25 +125,25 @@ export default class WsChat {
 	}
 
 	authByKey(key: string, callback: any) {
-		this.cbManager.add(PackType.auth + ':', callback);
+		this.cbManager.add(PacketType.auth + ':', callback);
 		this.sendRaw({
-			type: PackType.auth,
+			type: PacketType.auth,
 			ukey: key,
 		});
 	}
 
 	authByApiKey(key: string, callback: any) {
-		this.cbManager.add(PackType.auth + ':', callback);
+		this.cbManager.add(PacketType.auth + ':', callback);
 		this.sendRaw({
-			type: PackType.auth,
+			type: PacketType.auth,
 			api_key: key,
 		});
 	}
 
 	authByLoginAndPassword(login: string, password: string, callback: any) {
-		this.cbManager.add(PackType.auth + ':', callback);
+		this.cbManager.add(PacketType.auth + ':', callback);
 		this.sendRaw({
-			type: PackType.auth,
+			type: PacketType.auth,
 			login: login,
 			password: password,
 		});
@@ -124,7 +151,7 @@ export default class WsChat {
 
 	changeStatus(status: any) {
 		this.sendRaw({
-			type: PackType.status,
+			type: PacketType.status,
 			status: status,
 		});
 	}
@@ -141,9 +168,9 @@ export default class WsChat {
 			Object.assign(args, {target: '', callback: null}, name);
 		}
 
-		this.cbManager.add(PackType.join + ':' + args.target, args.callback);
+		this.cbManager.add(PacketType.join + ':' + args.target, args.callback);
 		this.sendRaw({
-			type: PackType.join,
+			type: PacketType.join,
 			target: args.target,
 			auto_login: args.autoLogin,
 			load_history: args.loadHistory,
@@ -151,25 +178,25 @@ export default class WsChat {
 	}
 
 	leaveRoom(name: string, callback: any) {
-		this.cbManager.add(PackType.leave + ':' + name, callback);
+		this.cbManager.add(PacketType.leave + ':' + name, callback);
 		this.sendRaw({
-			type: PackType.leave,
+			type: PacketType.leave,
 			target: name,
 		});
 	}
 
 	createRoom(name: string, callback: any) {
-		this.cbManager.add(PackType.create_room + ':' + name, callback);
+		this.cbManager.add(PacketType.create_room + ':' + name, callback);
 		this.sendRaw({
-			type: PackType.create_room,
+			type: PacketType.create_room,
 			target: name,
 		});
 	}
 
 	removeRoom(name: string, callback: any) {
-		this.cbManager.add(PackType.remove_room + ':' + name, callback);
+		this.cbManager.add(PacketType.remove_room + ':' + name, callback);
 		this.sendRaw({
-			type: PackType.remove_room,
+			type: PacketType.remove_room,
 			target: name,
 		});
 	}
@@ -199,7 +226,7 @@ function processError(chat: WsChat, err: any) {
 	if (err.source == 0 || !chat.cbManager.trigger(err.source + ':' + err.target, false, err)) {
 		let room = chat.getRoomByTarget(err.target);
 		if (room == null || room.onError(err) === true) {
-			chat.onError(err);
+			chat.emit(WsChatEvents.error, err);
 		}
 	}
 }
@@ -212,19 +239,19 @@ function processMessage(chat: WsChat, msg: any) {
 	let dt = JSON.parse(msg);
 	let room: Room;
 	switch (dt.type) {
-		case PackType.error:
+		case PacketType.error:
 			delete dt.type;
 			processError(chat, dt);
 			break;
 
-		case PackType.system:
+		case PacketType.system:
 			room = findOrCreateTempRoom(chat, dt.target);
 			if (room.onSysMessage(dt.message) === true) {
 				chat.onSysMessage(room, dt.message);
 			}
 			break;
 
-		case PackType.message:
+		case PacketType.message:
 			delete dt.type;
 			room = findOrCreateTempRoom(chat, dt.target);
 			if (room.onMessage(dt) === true){
@@ -232,25 +259,25 @@ function processMessage(chat: WsChat, msg: any) {
 			}
 			break;
 
-		case PackType.online_list:
+		case PacketType.online_list:
 			room = chat.getRoomByTarget(dt.target);
 			if (room) {
 				Room.onlineListChanged(room, dt.list);
 			}
 			break;
 
-		case PackType.auth:
+		case PacketType.auth:
 			delete dt.type;
-			chat.cbManager.trigger(PackType.auth + ':', true, dt);
+			chat.cbManager.trigger(PacketType.auth + ':', true, dt);
 			break;
 
-		case PackType.status:
+		case PacketType.status:
 			delete dt.type;
 			room = findOrCreateTempRoom(chat, dt.target);
 			Room.userStatusChanged(room, dt);
 			break;
 
-		case PackType.join:
+		case PacketType.join:
 			delete dt.type;
 			room = chat.getRoomByTarget(dt.target);
 			if (room == null) {
@@ -260,7 +287,7 @@ function processMessage(chat: WsChat, msg: any) {
 			Room.joined(room, dt);
 			break;
 
-		case PackType.leave:
+		case PacketType.leave:
 			let roomIdx = chat.rooms.findIndex(x => x.target == dt.target);
 
 			if (roomIdx >= 0) {
@@ -277,21 +304,21 @@ function processMessage(chat: WsChat, msg: any) {
 			}
 			break;
 
-		case PackType.create_room:
+		case PacketType.create_room:
 			if (!chat.cbManager.trigger(dt.type + ':' + dt.target, true)) {
 				chat.onRoomCreated(dt.target);
 			}
 			break;
 
-		case PackType.remove_room:
+		case PacketType.remove_room:
 			if (!chat.cbManager.trigger(dt.type + ':' + dt.target, true)) {
 				chat.onRoomRemoved(dt.target);
 			}
 			break;
 
-		case PackType.ping:
+		case PacketType.ping:
 			chat.sendRaw({
-				type: PackType.ping,
+				type: PacketType.ping,
 			});
 			break;
 	}
@@ -331,7 +358,7 @@ class Room {
 
 	sendMessage(text: string) {
 		this.wschat.sendRaw({
-			type: PackType.message,
+			type: PacketType.message,
 			target: this.target,
 			message: text,
 			time: Date.now(),
@@ -364,7 +391,7 @@ class Room {
 
 	changeStatus(status: any) {
 		this.wschat.sendRaw({
-			type: PackType.status,
+			type: PacketType.status,
 			target: this.target,
 			status: status,
 		});
@@ -384,7 +411,7 @@ class Room {
 
 		if (!room._joined) {
 			room._joined = true;
-			if (!room.wschat.cbManager.trigger(PackType.join + ':' + room.target, true, room)) {
+			if (!room.wschat.cbManager.trigger(PacketType.join + ':' + room.target, true, room)) {
 				if (room.onJoined() === true) {
 					room.wschat.onJoinedRoom(room);
 				}
@@ -468,35 +495,5 @@ class Room {
 				room.wschat.onUserStatusChanged(room, dt);
 			}
 		}
-	}
-}
-
-// CallbackManager
-
-class CallbackManager {
-	private callbacks = [] as any[];
-
-	add(key: string, cbk: any) {
-		if (typeof cbk == 'function') {
-			this.callbacks.push({key, cbk});
-		}
-	}
-
-	trigger(key: string, ...args: any[]) {
-		let i = 0;
-		while (i < this.callbacks.length) {
-			let el = this.callbacks[i];
-			if (el.key == key) {
-				this.callbacks.splice(i, 1);
-				return el.cbk.apply(null, args) !== true;
-			}
-			++i;
-		}
-
-		return false;
-	}
-
-	clear() {
-		this.callbacks = [];
 	}
 }
