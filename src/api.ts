@@ -1,71 +1,7 @@
 import WebSocket from 'ws';
 import CallbackManager from './CallbackManager';
 import EventEmitter from './EventEmitter';
-import {PacketType} from './packets';
-
-export const enum UserStatus {
-	bad = 0,
-	offline = 1,
-	online = 2,
-	away = 3,
-	nick_change = 4,
-	gender_change = 5,
-	color_change = 6,
-	back = 7,
-	typing = 8,
-	stop_typing = 9,
-};
-
-export const enum MessageStyle {
-	message = 0,
-	me = 1,
-	event = 2,
-	offtop = 3,
-};
-
-export interface MessageObject {
-	/** id сообщения, присутствует только у публичных сообщений, в лс отсутствует */
-	id?: string;
-	/** Цвет никнейма отправителя сообщения, любой поддерживаемый css формат цвета */
-	color: string;
-	/** Внутрикомнатный member_id отправителя сообщения */
-	from: number;
-	/** Внутрикомнатный member_id получается сообщения (0, если сообщение публичное) */
-	to: number;
-	/** Никнейм отправителя сообщения */
-	from_login: string;
-	/** Текст сообщения */
-	message: string;
-	/** Тип сообщения (me, do и т.п.) */
-	style: MessageStyle;
-	/** Название комнаты, в которую было отправлено сообщение */
-	target: string;
-	/** Время отправки сообщения в формате unixtime */
-	time: number;
-};
-
-export interface UserObject {
-	/** Цвет никнейма отправителя сообщения, любой поддерживаемый css формат цвета */
-	color: string;
-	/** Данные события (например, при смене никнейма содержит старый никнейм пользователя) */
-	data: string;
-	/** Имеет ли пользователь имеет женский пол */
-	girl: boolean;
-	/** Является ли пользователь модератором комнаты */
-	is_moder: boolean;
-	/** Является ли пользователь создателем комнаты */
-	is_owner: boolean;
-	/** Внутрикомнатный member_id пользователя */
-	member_id: number;
-	/** Никнейм пользователя */
-	name: string;
-	/** Статус пользователя */
-	status: UserStatus;
-	/** ID аккаунта пользователя на sinair.ru (0, если пользователь не авторизирован) */
-	user_id: number;
-	/** Время последнего присутствия пользователя (время перехода в статус away) в формате unixtime */
-	last_seen_time: number;
-}
+import {PacketType, MessageStyle, UserStatus} from './packets';
 
 export const enum WsChatEvents {
 	open = 'open',
@@ -111,7 +47,7 @@ export default class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 
 		sock.onopen = () => this.emit(WsChatEvents.open);
 		sock.onclose = () => this.emit(WsChatEvents.close);
-		sock.onmessage = data => processMessage(this, data.data);
+		sock.onmessage = data => this.processMessage(data.data);
 		sock.onerror = err => this.emit(WsChatEvents.connectionError, err);
 
 		this.sock = sock;
@@ -220,107 +156,105 @@ export default class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 	sendRaw(obj: any) {
 		this.sock.send(JSON.stringify(obj));
 	}
-}
 
-function processError(chat: WsChat, err: any) {
-	if (err.source == 0 || !chat.cbManager.trigger(err.source + ':' + err.target, false, err)) {
-		let room = chat.getRoomByTarget(err.target);
-		if (room == null || room.onError(err) === true) {
-			chat.emit(WsChatEvents.error, err);
+	private processMessage(msg: any) {
+		let chat = this;
+		let dt = JSON.parse(msg);
+		let room: Room;
+
+		let findOrCreateTempRoom = (target: string) => {
+			return chat.getRoomByTarget(target) || new Room(chat, target);
 		}
-	}
-}
 
-function findOrCreateTempRoom(chat: WsChat, target: string) {
-	return chat.getRoomByTarget(target) || new Room(chat, target);
-}
-
-function processMessage(chat: WsChat, msg: any) {
-	let dt = JSON.parse(msg);
-	let room: Room;
-	switch (dt.type) {
-		case PacketType.error:
-			delete dt.type;
-			processError(chat, dt);
-			break;
-
-		case PacketType.system:
-			room = findOrCreateTempRoom(chat, dt.target);
-			if (room.onSysMessage(dt.message) === true) {
-				chat.onSysMessage(room, dt.message);
-			}
-			break;
-
-		case PacketType.message:
-			delete dt.type;
-			room = findOrCreateTempRoom(chat, dt.target);
-			if (room.onMessage(dt) === true){
-				chat.onMessage(room, dt);
-			}
-			break;
-
-		case PacketType.online_list:
-			room = chat.getRoomByTarget(dt.target);
-			if (room) {
-				Room.onlineListChanged(room, dt.list);
-			}
-			break;
-
-		case PacketType.auth:
-			delete dt.type;
-			chat.cbManager.trigger(PacketType.auth + ':', true, dt);
-			break;
-
-		case PacketType.status:
-			delete dt.type;
-			room = findOrCreateTempRoom(chat, dt.target);
-			Room.userStatusChanged(room, dt);
-			break;
-
-		case PacketType.join:
-			delete dt.type;
-			room = chat.getRoomByTarget(dt.target);
-			if (room == null) {
-				room = new Room(chat, dt.target);
-				chat.rooms.push(room);
-			}
-			Room.joined(room, dt);
-			break;
-
-		case PacketType.leave:
-			let roomIdx = chat.rooms.findIndex(x => x.target == dt.target);
-
-			if (roomIdx >= 0) {
-				room = chat.rooms[roomIdx];
-				chat.rooms.splice(roomIdx, 1);
-			} else {
-				room = new Room(chat, dt.target);
-			}
-
-			if (!chat.cbManager.trigger(dt.type + ':' + dt.target, true)) {
-				if (room.onLeave() === true) {
-					chat.onLeaveRoom(room);
+		switch (dt.type) {
+			case PacketType.error:
+				delete dt.type;
+				if (dt.source == 0 || !this.cbManager.trigger(dt.source + ':' + dt.target, false, dt)) {
+					let room = this.getRoomByTarget(dt.target);
+					if (room == null || room.onError(dt) === true) {
+						this.emit(WsChatEvents.error, dt);
+					}
 				}
-			}
-			break;
+				break;
 
-		case PacketType.create_room:
-			if (!chat.cbManager.trigger(dt.type + ':' + dt.target, true)) {
-				chat.onRoomCreated(dt.target);
-			}
-			break;
+			case PacketType.system:
+				room = findOrCreateTempRoom(dt.target);
+				if (room.onSysMessage(dt.message) === true) {
+					chat.onSysMessage(room, dt.message);
+				}
+				break;
 
-		case PacketType.remove_room:
-			if (!chat.cbManager.trigger(dt.type + ':' + dt.target, true)) {
-				chat.onRoomRemoved(dt.target);
-			}
-			break;
+			case PacketType.message:
+				delete dt.type;
+				room = findOrCreateTempRoom(dt.target);
+				if (room.onMessage(dt) === true){
+					chat.onMessage(room, dt);
+				}
+				break;
 
-		case PacketType.ping:
-			chat.sendRaw({
-				type: PacketType.ping,
-			});
-			break;
+			case PacketType.online_list:
+				room = chat.getRoomByTarget(dt.target);
+				if (room) {
+					Room.onlineListChanged(room, dt.list);
+				}
+				break;
+
+			case PacketType.auth:
+				delete dt.type;
+				chat.cbManager.trigger(PacketType.auth + ':', true, dt);
+				break;
+
+			case PacketType.status:
+				delete dt.type;
+				room = findOrCreateTempRoom(dt.target);
+				Room.userStatusChanged(room, dt);
+				break;
+
+			case PacketType.join:
+				delete dt.type;
+				room = chat.getRoomByTarget(dt.target);
+				if (room == null) {
+					room = new Room(chat, dt.target);
+					chat.rooms.push(room);
+				}
+				Room.joined(room, dt);
+				break;
+
+			case PacketType.leave:
+				let roomIdx = chat.rooms.findIndex(x => x.target == dt.target);
+
+				if (roomIdx >= 0) {
+					room = chat.rooms[roomIdx];
+					chat.rooms.splice(roomIdx, 1);
+				} else {
+					room = new Room(chat, dt.target);
+				}
+
+				if (!chat.cbManager.trigger(dt.type + ':' + dt.target, true)) {
+					if (room.onLeave() === true) {
+						chat.onLeaveRoom(room);
+					}
+				}
+				break;
+
+			case PacketType.create_room:
+				if (!chat.cbManager.trigger(dt.type + ':' + dt.target, true)) {
+					chat.onRoomCreated(dt.target);
+				}
+				break;
+
+			case PacketType.remove_room:
+				if (!chat.cbManager.trigger(dt.type + ':' + dt.target, true)) {
+					chat.onRoomRemoved(dt.target);
+				}
+				break;
+
+			case PacketType.ping:
+				chat.sendRaw({
+					type: PacketType.ping,
+				});
+				break;
+		}
 	}
 }
 

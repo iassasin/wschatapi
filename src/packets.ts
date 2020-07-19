@@ -44,3 +44,67 @@ export type PacketSystem = PacketBase & {
 	message: string;
 	target: string;
 }
+
+export const enum UserStatus {
+	bad = 0,
+	offline = 1,
+	online = 2,
+	away = 3,
+	nick_change = 4,
+	gender_change = 5,
+	color_change = 6,
+	back = 7,
+	typing = 8,
+	stop_typing = 9,
+}
+
+export const enum MessageStyle {
+	message = 0,
+	me = 1,
+	event = 2,
+	offtop = 3,
+}
+
+export interface MessageObject {
+	/** id сообщения, присутствует только у публичных сообщений, в лс отсутствует */
+	id?: string;
+	/** Цвет никнейма отправителя сообщения, любой поддерживаемый css формат цвета */
+	color: string;
+	/** Внутрикомнатный member_id отправителя сообщения */
+	from: number;
+	/** Внутрикомнатный member_id получается сообщения (0, если сообщение публичное) */
+	to: number;
+	/** Никнейм отправителя сообщения */
+	from_login: string;
+	/** Текст сообщения */
+	message: string;
+	/** Тип сообщения (me, do и т.п.) */
+	style: MessageStyle;
+	/** Название комнаты, в которую было отправлено сообщение */
+	target: string;
+	/** Время отправки сообщения в формате unixtime */
+	time: number;
+};
+
+export interface UserObject {
+	/** Цвет никнейма отправителя сообщения, любой поддерживаемый css формат цвета */
+	color: string;
+	/** Данные события (например, при смене никнейма содержит старый никнейм пользователя) */
+	data: string;
+	/** Имеет ли пользователь имеет женский пол */
+	girl: boolean;
+	/** Является ли пользователь модератором комнаты */
+	is_moder: boolean;
+	/** Является ли пользователь создателем комнаты */
+	is_owner: boolean;
+	/** Внутрикомнатный member_id пользователя */
+	member_id: number;
+	/** Никнейм пользователя */
+	name: string;
+	/** Статус пользователя */
+	status: UserStatus;
+	/** ID аккаунта пользователя на sinair.ru (0, если пользователь не авторизирован) */
+	user_id: number;
+	/** Время последнего присутствия пользователя (время перехода в статус away) в формате unixtime */
+	last_seen_time: number;
+}
