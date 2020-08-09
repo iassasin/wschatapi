@@ -31,6 +31,18 @@ type WsChatEventsDeclarations = {
 	[WsChatEvents.removeRoom]: (target: string) => void;
 }
 
+function deferred<T = any>() {
+	type PromiseParams = Parameters<ConstructorParameters<PromiseConstructor>[0]>;
+	let resolve: (value?: T | PromiseLike<T>) => void, reject: PromiseParams[1];
+
+	let promise = new Promise<T>((res, rej) => {
+		resolve = res;
+		reject = rej;
+	});
+
+	return [promise, resolve, reject] as [typeof promise, typeof resolve, typeof reject];
+}
+
 export default class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 	private sock = null as WebSocket;
 	private address: string;
@@ -44,8 +56,19 @@ export default class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 		this.address = addr;
 	}
 
+	nextSequenceId() {
+		return this.sequenceId = this.sequenceId >= Number.MAX_SAFE_INTEGER ? 0 : this.sequenceId + 1;
+	}
+
 	open() {
-		this.close();
+		if (this.sock) {
+			throw Error('Connection already opened');
+		}
+
+		let [promise, resolve, reject] = deferred<void>();
+
+		this.once(WsChatEvents.open, resolve);
+		this.once(WsChatEvents.connectionError, reject);
 
 		let sock = new WebSocket(this.address);
 
@@ -55,13 +78,24 @@ export default class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 		sock.onerror = err => this.emit(WsChatEvents.connectionError, err);
 
 		this.sock = sock;
+
+		return promise;
 	}
 
 	close() {
-		if (this.sock) {
-			this.sock.close();
-			this.sock = null;
+		if (!this.sock) {
+			return Promise.resolve();
 		}
+
+		let [promise, resolve, reject] = deferred<void>();
+
+		this.once(WsChatEvents.close, resolve);
+		this.once(WsChatEvents.connectionError, reject);
+
+		this.sock.close();
+		this.sock = null;
+
+		return promise;
 	}
 
 	authByKey(key: string, callback: any) {

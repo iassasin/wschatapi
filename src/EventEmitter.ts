@@ -17,6 +17,15 @@ export default class EventEmitter<Events extends EventCallbacks = EventCallbacks
 		subs[name].push(callback);
 	}
 
+	once<T extends keyof Events>(name: T, callback: Events[T]) {
+		let f = ((...args: any[]) => {
+			this.off(name, f);
+			return callback(...args);
+		}) as Events[T];
+
+		this.on(name, f);
+	}
+
 	off<T extends keyof Events>(name: T, callback?: Events[T]) {
 		let subs = this.subscribers;
 		if (subs[name]) {
