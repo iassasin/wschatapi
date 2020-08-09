@@ -13,14 +13,16 @@ export const enum WsChatEvents {
 type WsChatEventsDeclarations = {
 	[WsChatEvents.open]: () => void;
 	[WsChatEvents.close]: () => void;
-	[WsChatEvents.error]: (error: any) => void;
+	[WsChatEvents.error]: (room: Room, error: any) => void;
 	[WsChatEvents.connectionError]: (error: Event) => void;
 }
 
 export default class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 	private sock = null as WebSocket;
 	private address: string;
-	rooms = [] as Room[];
+	private sequenceCallbacks = {} as {[sequenceId: number]: (...args: any[]) => any};
+	private sequenceId = 0;
+	private rooms = [] as Room[];
 	cbManager = new CallbackManager();
 
 	constructor(addr: string) {
@@ -162,34 +164,24 @@ export default class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 		let dt = JSON.parse(msg);
 		let room: Room;
 
-		let findOrCreateTempRoom = (target: string) => {
-			return chat.getRoomByTarget(target) || new Room(chat, target);
-		}
-
 		switch (dt.type) {
 			case PacketType.error:
 				delete dt.type;
 				if (dt.source == 0 || !this.cbManager.trigger(dt.source + ':' + dt.target, false, dt)) {
 					let room = this.getRoomByTarget(dt.target);
-					if (room == null || room.onError(dt) === true) {
-						this.emit(WsChatEvents.error, dt);
-					}
+					this.emit(WsChatEvents.error, room, dt);
 				}
 				break;
 
 			case PacketType.system:
-				room = findOrCreateTempRoom(dt.target);
-				if (room.onSysMessage(dt.message) === true) {
-					chat.onSysMessage(room, dt.message);
-				}
+				room = chat.getRoomByTarget(dt.target);
+				chat.onSysMessage(room, dt.message);
 				break;
 
 			case PacketType.message:
 				delete dt.type;
-				room = findOrCreateTempRoom(dt.target);
-				if (room.onMessage(dt) === true){
-					chat.onMessage(room, dt);
-				}
+				room = chat.getRoomByTarget(dt.target);
+				chat.onMessage(room, dt);
 				break;
 
 			case PacketType.online_list:
@@ -206,7 +198,7 @@ export default class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 
 			case PacketType.status:
 				delete dt.type;
-				room = findOrCreateTempRoom(dt.target);
+				room = chat.getRoomByTarget(dt.target);
 				Room.userStatusChanged(room, dt);
 				break;
 
@@ -231,9 +223,7 @@ export default class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 				}
 
 				if (!chat.cbManager.trigger(dt.type + ':' + dt.target, true)) {
-					if (room.onLeave() === true) {
-						chat.onLeaveRoom(room);
-					}
+					chat.onLeaveRoom(room);
 				}
 				break;
 
@@ -258,8 +248,6 @@ export default class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 	}
 }
 
-// Room
-
 class Room {
 	private wschat: WsChat;
 	target: string;
@@ -278,17 +266,6 @@ class Room {
 
 		this._joined = false;
 	}
-
-	onError(err: any) { return true; }
-	onSysMessage(message: string) { return true; }
-	onMessage(msgobj: any) { return true; }
-
-	onUserStatusChanged(user: any) { return true; }
-	onUserConnected(user: any) { return true; }
-	onUserDisconnected(user: any) { return true; }
-
-	onJoined() { return true; }
-	onLeave() { return true; }
 
 	sendMessage(text: string) {
 		this.wschat.sendRaw({
@@ -346,21 +323,16 @@ class Room {
 		if (!room._joined) {
 			room._joined = true;
 			if (!room.wschat.cbManager.trigger(PacketType.join + ':' + room.target, true, room)) {
-				if (room.onJoined() === true) {
-					room.wschat.onJoinedRoom(room);
-				}
+				room.wschat.onJoinedRoom(room);
 			}
 		} else {
-			if (room.onUserStatusChanged(null) === true) {
-				room.wschat.onUserStatusChanged(room, null);
-			}
+			room.wschat.onUserStatusChanged(room, null);
 		}
 	}
 
 	static userStatusChanged(room: Room, dt: any) {
 		switch (dt.status) {
 			case UserStatus.bad:
-				//room.wschat.requestOnlineList(room.target);
 				break;
 
 			case UserStatus.online:
@@ -415,19 +387,13 @@ class Room {
 		}
 
 		if (dt.status == UserStatus.online) {
-			if (room.onUserConnected(dt) === true) {
-				room.wschat.onUserConnected(room, dt);
-			}
+			room.wschat.onUserConnected(room, dt);
 		}
 		else if (dt.status == UserStatus.offline) {
-			if (room.onUserDisconnected(dt) === true) {
-				room.wschat.onUserDisconnected(room, dt);
-			}
+			room.wschat.onUserDisconnected(room, dt);
 		}
 		else {
-			if (room.onUserStatusChanged(dt) === true) {
-				room.wschat.onUserStatusChanged(room, dt);
-			}
+			room.wschat.onUserStatusChanged(room, dt);
 		}
 	}
 }
