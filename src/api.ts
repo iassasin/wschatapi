@@ -8,6 +8,13 @@ export const enum WsChatEvents {
 	close = 'close',
 	error = 'error',
 	connectionError = 'connection-error',
+	message = 'message',
+	sysMessage = 'sys-message',
+	userStatusChange = 'user-status-change',
+	joinRoom = 'join-room',
+	leaveRoom = 'leave-room',
+	createRoom = 'create-room',
+	removeRoom = 'remove-room',
 }
 
 type WsChatEventsDeclarations = {
@@ -15,6 +22,13 @@ type WsChatEventsDeclarations = {
 	[WsChatEvents.close]: () => void;
 	[WsChatEvents.error]: (room: Room, error: any) => void;
 	[WsChatEvents.connectionError]: (error: Event) => void;
+	[WsChatEvents.message]: (room: Room, msgobj: any) => void;
+	[WsChatEvents.sysMessage]: (room: Room, text: string) => void;
+	[WsChatEvents.userStatusChange]: (room: Room, user: any) => void;
+	[WsChatEvents.joinRoom]: (room: Room) => void;
+	[WsChatEvents.leaveRoom]: (room: Room) => void;
+	[WsChatEvents.createRoom]: (target: string) => void;
+	[WsChatEvents.removeRoom]: (target: string) => void;
 }
 
 export default class WsChat extends EventEmitter<WsChatEventsDeclarations> {
@@ -29,18 +43,6 @@ export default class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 		super();
 		this.address = addr;
 	}
-
-	onJoinedRoom(room: Room) {}
-	onLeaveRoom(room: Room) {}
-	onRoomCreated(target: string) {}
-	onRoomRemoved(target: string) {}
-
-	onMessage(room: Room, msgobj: any) {}
-	onSysMessage(room: Room, text: string) {}
-
-	onUserStatusChanged(room: Room, user: any) {}
-	onUserConnected(room: Room, user: any) {}
-	onUserDisconnected(room: Room, user: any) {}
 
 	open() {
 		this.close();
@@ -175,13 +177,13 @@ export default class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 
 			case PacketType.system:
 				room = chat.getRoomByTarget(dt.target);
-				chat.onSysMessage(room, dt.message);
+				chat.emit(WsChatEvents.sysMessage, room, dt.message);
 				break;
 
 			case PacketType.message:
 				delete dt.type;
 				room = chat.getRoomByTarget(dt.target);
-				chat.onMessage(room, dt);
+				chat.emit(WsChatEvents.message, room, dt);
 				break;
 
 			case PacketType.online_list:
@@ -223,19 +225,19 @@ export default class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 				}
 
 				if (!chat.cbManager.trigger(dt.type + ':' + dt.target, true)) {
-					chat.onLeaveRoom(room);
+					chat.emit(WsChatEvents.leaveRoom, room);
 				}
 				break;
 
 			case PacketType.create_room:
 				if (!chat.cbManager.trigger(dt.type + ':' + dt.target, true)) {
-					chat.onRoomCreated(dt.target);
+					chat.emit(WsChatEvents.createRoom, dt.target);
 				}
 				break;
 
 			case PacketType.remove_room:
 				if (!chat.cbManager.trigger(dt.type + ':' + dt.target, true)) {
-					chat.onRoomRemoved(dt.target);
+					chat.emit(WsChatEvents.removeRoom, dt.target);
 				}
 				break;
 
@@ -323,10 +325,10 @@ class Room {
 		if (!room._joined) {
 			room._joined = true;
 			if (!room.wschat.cbManager.trigger(PacketType.join + ':' + room.target, true, room)) {
-				room.wschat.onJoinedRoom(room);
+				room.wschat.emit(WsChatEvents.joinRoom, room);
 			}
 		} else {
-			room.wschat.onUserStatusChanged(room, null);
+			room.wschat.emit(WsChatEvents.userStatusChange, room, null);
 		}
 	}
 
@@ -386,14 +388,6 @@ class Room {
 				break;
 		}
 
-		if (dt.status == UserStatus.online) {
-			room.wschat.onUserConnected(room, dt);
-		}
-		else if (dt.status == UserStatus.offline) {
-			room.wschat.onUserDisconnected(room, dt);
-		}
-		else {
-			room.wschat.onUserStatusChanged(room, dt);
-		}
+		room.wschat.emit(WsChatEvents.userStatusChange, room, dt);
 	}
 }
