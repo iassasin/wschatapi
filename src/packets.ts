@@ -66,7 +66,7 @@ export type PacketMessage = PacketBase & Partial<MessageObject> & {
 export type PacketOnlineList = PacketBase & {
 	type: PacketType.online_list,
 	target: string,
-	list: UserObject[],
+	list: PacketStatus[],
 }
 
 export type PacketStatus = PacketBase & Partial<UserObject> & {
@@ -161,4 +161,6 @@ export interface UserObject {
 	user_id: number;
 	/** Время последнего присутствия пользователя (время перехода в статус away) в формате unixtime */
 	last_seen_time: number;
+	/** Признак того, набирает ли пользователь сообщение в данный момент */
+	typing: boolean;
 }

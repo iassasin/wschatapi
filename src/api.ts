@@ -1,6 +1,6 @@
 import WebSocket from 'ws';
 import EventEmitter from './EventEmitter';
-import {PacketType, UserStatus, Packet, PacketLeave} from './packets';
+import {PacketType, UserStatus, Packet, PacketLeave, MessageObject, UserObject, PacketJoin, PacketStatus} from './packets';
 
 export const enum WsChatEvents {
 	open = 'open',
@@ -17,9 +17,9 @@ type WsChatEventsDeclarations = {
 	close: () => void;
 	error: (room: Room, error: any) => void;
 	connectionError: (error: Event) => void;
-	message: (room: Room, msgobj: any) => void;
+	message: (room: Room, msgobj: MessageObject) => void;
 	sysMessage: (room: Room, text: string) => void;
-	userStatusChange: (room: Room, user: any) => void;
+	userStatusChange: (room: Room, user: UserObject) => void;
 }
 
 function deferred<T = any>() {
@@ -121,7 +121,7 @@ export class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 		return promise;
 	}
 
-	changeStatus(status: any) {
+	changeStatus(status: UserStatus) {
 		this.sendRaw({
 			type: PacketType.status,
 			status: status,
@@ -245,7 +245,7 @@ export class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 			case PacketType.message:
 				delete dt.type;
 				room = chat.getRoomByTarget(dt.target);
-				chat.emit(WsChatEvents.message, room, dt);
+				chat.emit(WsChatEvents.message, room, dt as MessageObject);
 				break;
 
 			case PacketType.online_list:
@@ -263,7 +263,7 @@ export class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 			case PacketType.status:
 				delete dt.type;
 				room = chat.getRoomByTarget(dt.target);
-				Room.userStatusChanged(room, dt);
+				Room.userStatusChanged(room, dt as UserObject);
 				break;
 
 			case PacketType.join:
@@ -306,7 +306,7 @@ export class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 class Room {
 	private wschat: WsChat;
 	target: string;
-	members: any[];
+	members: UserObject[];
 	memberId: number;
 	memberNick: string;
 	private _joined: boolean;
@@ -335,7 +335,7 @@ class Room {
 		return this.members.find(x => x.member_id == id);
 	}
 
-	changeStatus(status: any) {
+	changeStatus(status: UserStatus) {
 		this.wschat.sendRaw({
 			type: PacketType.status,
 			target: this.target,
@@ -343,17 +343,17 @@ class Room {
 		});
 	}
 
-	static joined(room: Room, dt: any) {
+	static joined(room: Room, dt: PacketJoin) {
 		room.memberId = dt.member_id;
 		room.memberNick = dt.login;
 	}
 
-	static onlineListChanged(room: Room, list: any[], sequenceId: number) {
+	static onlineListChanged(room: Room, list: PacketStatus[], sequenceId: number) {
 		for (let el of list) {
 			delete el.type;
 			el.typing = false;
 		}
-		room.members = list;
+		room.members = list as UserObject[];
 
 		if (!room._joined) {
 			room._joined = true;
@@ -361,7 +361,7 @@ class Room {
 		}
 	}
 
-	static userStatusChanged(room: Room, dt: any) {
+	static userStatusChanged(room: Room, dt: UserObject) {
 		switch (dt.status) {
 			case UserStatus.bad:
 				break;
@@ -370,6 +370,8 @@ class Room {
 				if (room.memberId == dt.member_id) {
 					room.memberNick = dt.name;
 				}
+
+				dt.typing = false;
 				room.members.push(dt);
 				break;
 
