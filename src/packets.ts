@@ -14,7 +14,7 @@ export const enum PacketType {
 
 type PacketBase = {
 	type: PacketType,
-	sequenceId: number,
+	sequenceId?: number,
 };
 
 export type Packet = PacketError | PacketSystem | PacketMessage | PacketOnlineList | PacketStatus | PacketAuth
@@ -59,7 +59,7 @@ export const enum UserStatus {
 	stop_typing = 9,
 }
 
-export type PacketMessage = PacketBase & MessageObject & {
+export type PacketMessage = PacketBase & Partial<MessageObject> & {
 	type: PacketType.message,
 }
 
@@ -69,22 +69,28 @@ export type PacketOnlineList = PacketBase & {
 	list: UserObject[],
 }
 
-export type PacketStatus = PacketBase & UserObject & {
+export type PacketStatus = PacketBase & Partial<UserObject> & {
 	type: PacketType.status,
-	target: string,
+	target?: string,
 }
 
 export type PacketAuth = PacketBase & {
 	type: PacketType.auth,
-	user_id: number,
-	name: string,
+	user_id?: number,
+	name?: string,
+	ukey?: string,
+	api_key?: string,
+	login?: string,
+	password?: string,
 }
 
 export type PacketJoin = PacketBase & {
 	type: PacketType.join,
 	target: string,
-	member_id: number,
-	login: string,
+	member_id?: number,
+	login?: string,
+	auto_login?: boolean,
+	load_history?: boolean,
 }
 
 export type PacketLeave = PacketBase & {
@@ -138,7 +144,7 @@ export interface UserObject {
 	/** Цвет никнейма отправителя сообщения, любой поддерживаемый css формат цвета */
 	color: string;
 	/** Данные события (например, при смене никнейма содержит старый никнейм пользователя) */
-	data: string;
+	data?: string;
 	/** Имеет ли пользователь имеет женский пол */
 	girl: boolean;
 	/** Является ли пользователь модератором комнаты */

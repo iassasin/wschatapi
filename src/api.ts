@@ -6,20 +6,20 @@ export const enum WsChatEvents {
 	open = 'open',
 	close = 'close',
 	error = 'error',
-	connectionError = 'connection-error',
+	connectionError = 'connectionError',
 	message = 'message',
-	sysMessage = 'sys-message',
-	userStatusChange = 'user-status-change',
+	sysMessage = 'sysMessage',
+	userStatusChange = 'userStatusChange',
 }
 
 type WsChatEventsDeclarations = {
-	[WsChatEvents.open]: () => void;
-	[WsChatEvents.close]: () => void;
-	[WsChatEvents.error]: (room: Room, error: any) => void;
-	[WsChatEvents.connectionError]: (error: Event) => void;
-	[WsChatEvents.message]: (room: Room, msgobj: any) => void;
-	[WsChatEvents.sysMessage]: (room: Room, text: string) => void;
-	[WsChatEvents.userStatusChange]: (room: Room, user: any) => void;
+	open: () => void;
+	close: () => void;
+	error: (room: Room, error: any) => void;
+	connectionError: (error: Event) => void;
+	message: (room: Room, msgobj: any) => void;
+	sysMessage: (room: Room, text: string) => void;
+	userStatusChange: (room: Room, user: any) => void;
 }
 
 function deferred<T = any>() {
@@ -34,7 +34,7 @@ function deferred<T = any>() {
 	return [promise, resolve, reject] as [typeof promise, typeof resolve, typeof reject];
 }
 
-export default class WsChat extends EventEmitter<WsChatEventsDeclarations> {
+export class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 	private sock = null as WebSocket;
 	private address: string;
 	private sequenceCallbacks = {} as {[sequenceId: number]: (...args: any[]) => any};
@@ -190,7 +190,7 @@ export default class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 		return this.rooms.find(x => x.target == target);
 	}
 
-	sendRaw(obj: any) {
+	sendRaw(obj: Packet) {
 		this.sock.send(JSON.stringify(obj));
 	}
 
@@ -420,3 +420,5 @@ class Room {
 		room.wschat.emit(WsChatEvents.userStatusChange, room, dt);
 	}
 }
+
+export default WsChat;

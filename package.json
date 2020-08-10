@@ -5,6 +5,7 @@
   "homepage": "https://github.com/iassasin/wschatapi",
   "main": "dist/chat-api-node.js",
   "browser": "dist/chat-api-browser.js",
+  "types": "dist/types/api.d.ts",
   "author": {
     "email": "iassasin@yandex.ru",
     "name": "iassasin",
@@ -26,7 +27,8 @@
   ],
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "NODE_ENV=production rollup -c",
+    "build": "NODE_ENV=production rollup -c && NODE_ENV=production npm run build:types",
+    "build:types": "tsc -p tsconfig.json -d --emitDeclarationOnly --outDir dist/types",
     "watch": "rollup -cw",
     "release": "npm run build"
   },
