@@ -187,11 +187,7 @@ export default class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 			return null;
 		}
 
-		for (let i in this.rooms) {
-			if (this.rooms[i].getTarget() == target) {
-				return this.rooms[i];
-			}
-		}
+		return this.rooms.find(x => x.target == target);
 	}
 
 	sendRaw(obj: any) {
@@ -294,9 +290,6 @@ export default class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 				break;
 
 			case PacketType.create_room:
-				chat.sequenceCallback(dt.sequenceId, true, dt.target);
-				break;
-
 			case PacketType.remove_room:
 				chat.sequenceCallback(dt.sequenceId, true, dt.target);
 				break;
@@ -313,9 +306,9 @@ export default class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 class Room {
 	private wschat: WsChat;
 	target: string;
-	private members: any[];
-	private member_id: number;
-	private member_login: string;
+	members: any[];
+	memberId: number;
+	memberNick: string;
 	private _joined: boolean;
 
 	constructor(wschat: WsChat, target: string) {
@@ -323,8 +316,8 @@ class Room {
 		this.target = target;
 		this.members = [];
 
-		this.member_id = 0;
-		this.member_login = '';
+		this.memberId = 0;
+		this.memberNick = '';
 
 		this._joined = false;
 	}
@@ -338,28 +331,8 @@ class Room {
 		});
 	}
 
-	getTarget() {
-		return this.target;
-	}
-
-	getMembers() {
-		return this.members;
-	}
-
 	getMemberById(id: number) {
-		for (let i in this.members) {
-			if (this.members[i].member_id == id) {
-				return this.members[i];
-			}
-		}
-	}
-
-	getMyMemberId() {
-		return this.member_id;
-	}
-
-	getMyMemberNick() {
-		return this.member_login;
+		return this.members.find(x => x.member_id == id);
 	}
 
 	changeStatus(status: any) {
@@ -371,14 +344,14 @@ class Room {
 	}
 
 	static joined(room: Room, dt: any) {
-		room.member_id = dt.member_id;
-		room.member_login = dt.login;
+		room.memberId = dt.member_id;
+		room.memberNick = dt.login;
 	}
 
 	static onlineListChanged(room: Room, list: any[], sequenceId: number) {
-		for (let i in list) {
-			delete list[i].type;
-			list[i].typing = false;
+		for (let el of list) {
+			delete el.type;
+			el.typing = false;
 		}
 		room.members = list;
 
@@ -394,15 +367,15 @@ class Room {
 				break;
 
 			case UserStatus.online:
-				if (room.member_id == dt.member_id) {
-					room.member_login = dt.name;
+				if (room.memberId == dt.member_id) {
+					room.memberNick = dt.name;
 				}
 				room.members.push(dt);
 				break;
 
 			case UserStatus.offline:
-				if (room.member_id == dt.member_id) {
-					room.member_login = '';
+				if (room.memberId == dt.member_id) {
+					room.memberNick = '';
 				}
 
 				room.members = room.members.filter(x => x.member_id != dt.member_id);
@@ -417,8 +390,8 @@ class Room {
 				break;
 
 			case UserStatus.nick_change:
-				if (room.member_id == dt.member_id) {
-					room.member_login = dt.name;
+				if (room.memberId == dt.member_id) {
+					room.memberNick = dt.name;
 				}
 				room.getMemberById(dt.member_id).name = dt.name;
 				break;
