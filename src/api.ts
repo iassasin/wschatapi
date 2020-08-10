@@ -1,6 +1,8 @@
 import WebSocket from 'ws';
 import EventEmitter from './EventEmitter';
-import {PacketType, UserStatus, Packet, PacketLeave, MessageObject, UserObject, PacketJoin, PacketStatus} from './packets';
+import {PacketType, UserStatus, Packet, PacketLeave, MessageObject, UserObject, PacketJoin, PacketStatus, PacketAuth} from './packets';
+
+export {MessageObject, MessageStyle, UserObject, PacketType, ErrorCode, UserStatus} from './packets';
 
 export const enum WsChatEvents {
 	open = 'open',
@@ -85,7 +87,7 @@ export class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 	}
 
 	authByKey(key: string) {
-		let [promise, sequenceId] = this.createPromiseOnSequence();
+		let [promise, sequenceId] = this.createPromiseOnSequence<PacketAuth>();
 
 		this.sendRaw({
 			sequenceId,
@@ -97,7 +99,7 @@ export class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 	}
 
 	authByApiKey(key: string) {
-		let [promise, sequenceId] = this.createPromiseOnSequence();
+		let [promise, sequenceId] = this.createPromiseOnSequence<PacketAuth>();
 
 		this.sendRaw({
 			sequenceId,
@@ -109,7 +111,7 @@ export class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 	}
 
 	authByLoginAndPassword(login: string, password: string) {
-		let [promise, sequenceId] = this.createPromiseOnSequence();
+		let [promise, sequenceId] = this.createPromiseOnSequence<PacketAuth>();
 
 		this.sendRaw({
 			sequenceId,
@@ -129,7 +131,7 @@ export class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 	}
 
 	joinRoom(target: string, options = {autoLogin: false, loadHistory: false}) {
-		let [promise, sequenceId] = this.createPromiseOnSequence();
+		let [promise, sequenceId] = this.createPromiseOnSequence<Room>();
 
 		this.sendRaw({
 			sequenceId,
@@ -143,7 +145,7 @@ export class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 	}
 
 	leaveRoom(name: string) {
-		let [promise, sequenceId] = this.createPromiseOnSequence();
+		let [promise, sequenceId] = this.createPromiseOnSequence<string>();
 
 		this.sendRaw({
 			sequenceId,
@@ -155,7 +157,7 @@ export class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 	}
 
 	createRoom(name: string) {
-		let [promise, sequenceId] = this.createPromiseOnSequence();
+		let [promise, sequenceId] = this.createPromiseOnSequence<string>();
 
 		this.sendRaw({
 			sequenceId,
@@ -167,7 +169,7 @@ export class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 	}
 
 	removeRoom(name: string) {
-		let [promise, sequenceId] = this.createPromiseOnSequence();
+		let [promise, sequenceId] = this.createPromiseOnSequence<string>();
 
 		this.sendRaw({
 			sequenceId,
@@ -198,9 +200,9 @@ export class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 		return this.sequenceId = this.sequenceId >= Number.MAX_SAFE_INTEGER ? 0 : this.sequenceId + 1;
 	}
 
-	private createPromiseOnSequence() {
+	private createPromiseOnSequence<T = any>() {
 		let sequenceId = this.nextSequenceId();
-		let [promise, resolve] = deferred();
+		let [promise, resolve] = deferred<T>();
 		this.sequenceCallbacks[sequenceId] = resolve;
 
 		return [promise, sequenceId] as [typeof promise, typeof sequenceId];
