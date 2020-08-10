@@ -17,7 +17,8 @@ type PacketBase = {
 	sequenceId: number,
 };
 
-export type Packet = PacketError | PacketSystem;
+export type Packet = PacketError | PacketSystem | PacketMessage | PacketOnlineList | PacketStatus | PacketAuth
+	| PacketJoin | PacketLeave | PacketCreateRoom | PacketRemoveRoom | PacketPing;
 
 export type PacketError = PacketBase & {
 	type: PacketType.error,
@@ -56,6 +57,53 @@ export const enum UserStatus {
 	back = 7,
 	typing = 8,
 	stop_typing = 9,
+}
+
+export type PacketMessage = PacketBase & MessageObject & {
+	type: PacketType.message,
+}
+
+export type PacketOnlineList = PacketBase & {
+	type: PacketType.online_list,
+	target: string,
+	list: UserObject[],
+}
+
+export type PacketStatus = PacketBase & UserObject & {
+	type: PacketType.status,
+	target: string,
+}
+
+export type PacketAuth = PacketBase & {
+	type: PacketType.auth,
+	user_id: number,
+	name: string,
+}
+
+export type PacketJoin = PacketBase & {
+	type: PacketType.join,
+	target: string,
+	member_id: number,
+	login: string,
+}
+
+export type PacketLeave = PacketBase & {
+	type: PacketType.leave,
+	target: string,
+}
+
+export type PacketCreateRoom = PacketBase & {
+	type: PacketType.create_room,
+	target: string,
+}
+
+export type PacketRemoveRoom = PacketBase & {
+	type: PacketType.remove_room,
+	target: string,
+}
+
+export type PacketPing = PacketBase & {
+	type: PacketType.ping,
 }
 
 export const enum MessageStyle {

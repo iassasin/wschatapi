@@ -1,6 +1,6 @@
 import WebSocket from 'ws';
 import EventEmitter from './EventEmitter';
-import {PacketType, MessageStyle, UserStatus} from './packets';
+import {PacketType, UserStatus, Packet, PacketLeave} from './packets';
 
 export const enum WsChatEvents {
 	open = 'open',
@@ -60,7 +60,7 @@ export default class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 
 		sock.onopen = () => this.emit(WsChatEvents.open);
 		sock.onclose = () => this.emit(WsChatEvents.close);
-		sock.onmessage = data => this.processMessage(data.data);
+		sock.onmessage = data => this.processMessage(data.data as string);
 		sock.onerror = err => this.emit(WsChatEvents.connectionError, err);
 
 		this.sock = sock;
@@ -203,7 +203,7 @@ export default class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 		let [promise, resolve] = deferred();
 		this.sequenceCallbacks[sequenceId] = resolve;
 
-		return [promise, sequenceId];
+		return [promise, sequenceId] as [typeof promise, typeof sequenceId];
 	}
 
 	sequenceCallback<T>(sequenceId: number, remove: boolean, ...args: T[]) {
@@ -221,9 +221,9 @@ export default class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 		return false;
 	}
 
-	private processMessage(msg: any) {
+	private processMessage(msg: string) {
 		let chat = this;
-		let dt = JSON.parse(msg);
+		let dt = JSON.parse(msg) as Packet;
 		let room: Room;
 
 		switch (dt.type) {
@@ -277,7 +277,7 @@ export default class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 				break;
 
 			case PacketType.leave:
-				let roomIdx = chat.rooms.findIndex(x => x.target == dt.target);
+				let roomIdx = chat.rooms.findIndex(x => x.target == (dt as PacketLeave).target);
 
 				if (roomIdx >= 0) {
 					room = chat.rooms[roomIdx];
