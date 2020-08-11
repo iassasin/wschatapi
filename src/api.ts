@@ -39,7 +39,7 @@ function deferred<T = any>() {
 export class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 	private _sock = null as WebSocket;
 	private _address: string;
-	private _sequenceCallbacks = {} as {[sequenceId: number]: (...args: any[]) => any};
+	private _sequenceCallbacks = {} as {[sequenceId: number]: ((...args: any[]) => any)[]};
 	private _sequenceId = 0;
 	rooms = [] as Room[];
 
@@ -53,10 +53,7 @@ export class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 			throw Error('Connection already opened');
 		}
 
-		let [promise, resolve, reject] = deferred<void>();
-
-		this.once(WsChatEvents.open, resolve);
-		this.once(WsChatEvents.connectionError, reject);
+		let promise = this._promiseFromEvents(WsChatEvents.open, WsChatEvents.connectionError);
 
 		let sock = new WebSocket(this._address);
 
@@ -78,10 +75,7 @@ export class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 			return Promise.resolve();
 		}
 
-		let [promise, resolve, reject] = deferred<void>();
-
-		this.once(WsChatEvents.close, resolve);
-		this.once(WsChatEvents.connectionError, reject);
+		let promise = this._promiseFromEvents(WsChatEvents.close, WsChatEvents.connectionError);
 
 		this._sock.close();
 		this._sock = null;
@@ -195,26 +189,45 @@ export class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 		this._sock.send(JSON.stringify(obj));
 	}
 
+	private _promiseFromEvents(resolveEvent: WsChatEvents, rejectEvent: WsChatEvents) {
+		let [promise, resolve, reject] = deferred<void>();
+
+		let okHandler: () => void, errorHandler: (err: any) => void;
+
+		okHandler = () => {
+			this.off(rejectEvent, errorHandler);
+			resolve();
+		};
+
+		errorHandler = (err: any) => {
+			this.off(resolveEvent, okHandler);
+			reject(err);
+		};
+
+		this.once(resolveEvent, okHandler);
+		this.once(rejectEvent, errorHandler);
+
+		return promise;
+	}
+
 	private _nextSequenceId() {
 		return this._sequenceId = this._sequenceId >= Number.MAX_SAFE_INTEGER ? 0 : this._sequenceId + 1;
 	}
 
 	private _createPromiseOnSequence<T = any>() {
 		let sequenceId = this._nextSequenceId();
-		let [promise, resolve] = deferred<T>();
-		this._sequenceCallbacks[sequenceId] = resolve;
+		let [promise, resolve, reject] = deferred<T>();
+		this._sequenceCallbacks[sequenceId] = [resolve, reject];
 
 		return [promise, sequenceId] as [typeof promise, typeof sequenceId];
 	}
 
-	_sequenceCallback<T>(sequenceId: number, remove: boolean, ...args: T[]) {
+	_sequenceCallback<T>(sequenceId: number, error: boolean, ...args: T[]) {
 		if (sequenceId){
 			let f = this._sequenceCallbacks[sequenceId];
 			if (f) {
-				f(...args);
-				if (remove) {
-					delete this._sequenceCallbacks[sequenceId];
-				}
+				delete this._sequenceCallbacks[sequenceId];
+				f[+error](...args);
 				return true;
 			}
 		}
@@ -258,7 +271,7 @@ export class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 
 			case PacketType.auth:
 				delete dt.type;
-				chat._sequenceCallback(dt.sequenceId, true, dt);
+				chat._sequenceCallback(dt.sequenceId, false, dt);
 				break;
 
 			case PacketType.status:
@@ -287,12 +300,12 @@ export class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 					room = new Room(chat, dt.target);
 				}
 
-				chat._sequenceCallback(dt.sequenceId, true, dt.target);
+				chat._sequenceCallback(dt.sequenceId, false, dt.target);
 				break;
 
 			case PacketType.create_room:
 			case PacketType.remove_room:
-				chat._sequenceCallback(dt.sequenceId, true, dt.target);
+				chat._sequenceCallback(dt.sequenceId, false, dt.target);
 				break;
 
 			case PacketType.ping:
@@ -358,7 +371,7 @@ class Room {
 
 		if (!room._joined) {
 			room._joined = true;
-			room._wschat._sequenceCallback(sequenceId, true, room);
+			room._wschat._sequenceCallback(sequenceId, false, room);
 		}
 	}
 

@@ -2,9 +2,12 @@ type EventCallbacks = {
 	[k: string]: (...args: any[]) => any;
 };
 
+type CallbackType<T> = (T & {_origCallback?: T});
+
 export default class EventEmitter<Events extends EventCallbacks = EventCallbacks> {
+
 	private subscribers = {} as {
-		[k in keyof Events]: Events[k][]
+		[k in keyof Events]: CallbackType<Events[k]>[]
 	};
 
 	on<T extends keyof Events>(name: T, callback: Events[T]) {
@@ -21,15 +24,24 @@ export default class EventEmitter<Events extends EventCallbacks = EventCallbacks
 		let f = ((...args: any[]) => {
 			this.off(name, f);
 			return callback(...args);
-		}) as Events[T];
+		}) as CallbackType<Events[T]>;
+
+		f._origCallback = callback;
 
 		this.on(name, f);
 	}
 
-	off<T extends keyof Events>(name: T, callback?: Events[T]) {
+	off<T extends keyof Events>(name?: T, callback?: Events[T]) {
 		let subs = this.subscribers;
-		if (subs[name]) {
-			subs[name] = callback ? subs[name].filter(x => x !== callback) : [];
+
+		console.log(`call off ${name}`, callback);
+
+		if (!name) {
+			this.subscribers = {} as typeof subs;
+		} else if (subs[name]) {
+			console.log(`off ${name}`, subs[name]);
+			subs[name] = callback ? subs[name].filter(x => x !== callback && x._origCallback != callback) : [];
+			console.log(`off 2 ${name}`, subs[name]);
 		}
 	}
 
