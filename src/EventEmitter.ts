@@ -7,7 +7,7 @@ type CallbackType<T> = (T & {_origCallback?: T});
 export default class EventEmitter<Events extends EventCallbacks = EventCallbacks> {
 
 	private subscribers = {} as {
-		[k in keyof Events]: CallbackType<Events[k]>[]
+		[k in keyof Events]?: CallbackType<Events[k]>[]
 	};
 
 	on<T extends keyof Events>(name: T, callback: Events[T]) {
@@ -35,7 +35,7 @@ export default class EventEmitter<Events extends EventCallbacks = EventCallbacks
 		let subs = this.subscribers;
 
 		if (!name) {
-			this.subscribers = {} as typeof subs;
+			this.subscribers = {};
 		} else if (subs[name]) {
 			subs[name] = callback ? subs[name].filter(x => x !== callback && x._origCallback != callback) : [];
 		}
