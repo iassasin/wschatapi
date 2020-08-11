@@ -37,19 +37,19 @@ function deferred<T = any>() {
 }
 
 export class WsChat extends EventEmitter<WsChatEventsDeclarations> {
-	private sock = null as WebSocket;
-	private address: string;
-	private sequenceCallbacks = {} as {[sequenceId: number]: (...args: any[]) => any};
-	private sequenceId = 0;
-	private rooms = [] as Room[];
+	private _sock = null as WebSocket;
+	private _address: string;
+	private _sequenceCallbacks = {} as {[sequenceId: number]: (...args: any[]) => any};
+	private _sequenceId = 0;
+	rooms = [] as Room[];
 
 	constructor(addr: string) {
 		super();
-		this.address = addr;
+		this._address = addr;
 	}
 
 	open() {
-		if (this.sock) {
+		if (this._sock) {
 			throw Error('Connection already opened');
 		}
 
@@ -58,20 +58,20 @@ export class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 		this.once(WsChatEvents.open, resolve);
 		this.once(WsChatEvents.connectionError, reject);
 
-		let sock = new WebSocket(this.address);
+		let sock = new WebSocket(this._address);
 
 		sock.onopen = () => this.emit(WsChatEvents.open);
 		sock.onclose = () => this.emit(WsChatEvents.close);
-		sock.onmessage = data => this.processMessage(data.data as string);
+		sock.onmessage = data => this._processMessage(data.data as string);
 		sock.onerror = err => this.emit(WsChatEvents.connectionError, err);
 
-		this.sock = sock;
+		this._sock = sock;
 
 		return promise;
 	}
 
 	close() {
-		if (!this.sock) {
+		if (!this._sock) {
 			return Promise.resolve();
 		}
 
@@ -80,16 +80,16 @@ export class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 		this.once(WsChatEvents.close, resolve);
 		this.once(WsChatEvents.connectionError, reject);
 
-		this.sock.close();
-		this.sock = null;
+		this._sock.close();
+		this._sock = null;
 
 		return promise;
 	}
 
 	authByKey(key: string) {
-		let [promise, sequenceId] = this.createPromiseOnSequence<PacketAuth>();
+		let [promise, sequenceId] = this._createPromiseOnSequence<PacketAuth>();
 
-		this.sendRaw({
+		this._sendRaw({
 			sequenceId,
 			type: PacketType.auth,
 			ukey: key,
@@ -99,9 +99,9 @@ export class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 	}
 
 	authByApiKey(key: string) {
-		let [promise, sequenceId] = this.createPromiseOnSequence<PacketAuth>();
+		let [promise, sequenceId] = this._createPromiseOnSequence<PacketAuth>();
 
-		this.sendRaw({
+		this._sendRaw({
 			sequenceId,
 			type: PacketType.auth,
 			api_key: key,
@@ -111,9 +111,9 @@ export class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 	}
 
 	authByLoginAndPassword(login: string, password: string) {
-		let [promise, sequenceId] = this.createPromiseOnSequence<PacketAuth>();
+		let [promise, sequenceId] = this._createPromiseOnSequence<PacketAuth>();
 
-		this.sendRaw({
+		this._sendRaw({
 			sequenceId,
 			type: PacketType.auth,
 			login: login,
@@ -124,16 +124,16 @@ export class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 	}
 
 	changeStatus(status: UserStatus) {
-		this.sendRaw({
+		this._sendRaw({
 			type: PacketType.status,
 			status: status,
 		});
 	}
 
 	joinRoom(target: string, options = {autoLogin: false, loadHistory: false}) {
-		let [promise, sequenceId] = this.createPromiseOnSequence<Room>();
+		let [promise, sequenceId] = this._createPromiseOnSequence<Room>();
 
-		this.sendRaw({
+		this._sendRaw({
 			sequenceId,
 			type: PacketType.join,
 			target,
@@ -145,9 +145,9 @@ export class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 	}
 
 	leaveRoom(name: string) {
-		let [promise, sequenceId] = this.createPromiseOnSequence<string>();
+		let [promise, sequenceId] = this._createPromiseOnSequence<string>();
 
-		this.sendRaw({
+		this._sendRaw({
 			sequenceId,
 			type: PacketType.leave,
 			target: name,
@@ -157,9 +157,9 @@ export class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 	}
 
 	createRoom(name: string) {
-		let [promise, sequenceId] = this.createPromiseOnSequence<string>();
+		let [promise, sequenceId] = this._createPromiseOnSequence<string>();
 
-		this.sendRaw({
+		this._sendRaw({
 			sequenceId,
 			type: PacketType.create_room,
 			target: name,
@@ -169,19 +169,15 @@ export class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 	}
 
 	removeRoom(name: string) {
-		let [promise, sequenceId] = this.createPromiseOnSequence<string>();
+		let [promise, sequenceId] = this._createPromiseOnSequence<string>();
 
-		this.sendRaw({
+		this._sendRaw({
 			sequenceId,
 			type: PacketType.remove_room,
 			target: name,
 		});
 
 		return promise;
-	}
-
-	getConnectedRooms() {
-		return this.rooms;
 	}
 
 	getRoomByTarget(target: string) {
@@ -192,29 +188,29 @@ export class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 		return this.rooms.find(x => x.target == target);
 	}
 
-	sendRaw(obj: Packet) {
-		this.sock.send(JSON.stringify(obj));
+	_sendRaw(obj: Packet) {
+		this._sock.send(JSON.stringify(obj));
 	}
 
-	private nextSequenceId() {
-		return this.sequenceId = this.sequenceId >= Number.MAX_SAFE_INTEGER ? 0 : this.sequenceId + 1;
+	private _nextSequenceId() {
+		return this._sequenceId = this._sequenceId >= Number.MAX_SAFE_INTEGER ? 0 : this._sequenceId + 1;
 	}
 
-	private createPromiseOnSequence<T = any>() {
-		let sequenceId = this.nextSequenceId();
+	private _createPromiseOnSequence<T = any>() {
+		let sequenceId = this._nextSequenceId();
 		let [promise, resolve] = deferred<T>();
-		this.sequenceCallbacks[sequenceId] = resolve;
+		this._sequenceCallbacks[sequenceId] = resolve;
 
 		return [promise, sequenceId] as [typeof promise, typeof sequenceId];
 	}
 
-	sequenceCallback<T>(sequenceId: number, remove: boolean, ...args: T[]) {
+	_sequenceCallback<T>(sequenceId: number, remove: boolean, ...args: T[]) {
 		if (sequenceId){
-			let f = this.sequenceCallbacks[sequenceId];
+			let f = this._sequenceCallbacks[sequenceId];
 			if (f) {
 				f(...args);
 				if (remove) {
-					delete this.sequenceCallbacks[sequenceId];
+					delete this._sequenceCallbacks[sequenceId];
 				}
 				return true;
 			}
@@ -223,7 +219,7 @@ export class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 		return false;
 	}
 
-	private processMessage(msg: string) {
+	private _processMessage(msg: string) {
 		let chat = this;
 		let dt = JSON.parse(msg) as Packet;
 		let room: Room;
@@ -232,7 +228,7 @@ export class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 			case PacketType.error:
 				delete dt.type;
 
-				if (!this.sequenceCallback(dt.sequenceId, true, dt)) {
+				if (!this._sequenceCallback(dt.sequenceId, true, dt)) {
 					let room = this.getRoomByTarget(dt.target);
 					this.emit(WsChatEvents.error, room, dt);
 				}
@@ -253,19 +249,19 @@ export class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 			case PacketType.online_list:
 				room = chat.getRoomByTarget(dt.target);
 				if (room) {
-					Room.onlineListChanged(room, dt.list, dt.sequenceId);
+					Room._onlineListChanged(room, dt.list, dt.sequenceId);
 				}
 				break;
 
 			case PacketType.auth:
 				delete dt.type;
-				chat.sequenceCallback(dt.sequenceId, true, dt);
+				chat._sequenceCallback(dt.sequenceId, true, dt);
 				break;
 
 			case PacketType.status:
 				delete dt.type;
 				room = chat.getRoomByTarget(dt.target);
-				Room.userStatusChanged(room, dt as UserObject);
+				Room._userStatusChanged(room, dt as UserObject);
 				break;
 
 			case PacketType.join:
@@ -275,7 +271,7 @@ export class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 					room = new Room(chat, dt.target);
 					chat.rooms.push(room);
 				}
-				Room.joined(room, dt);
+				Room._joined(room, dt);
 				break;
 
 			case PacketType.leave:
@@ -288,16 +284,16 @@ export class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 					room = new Room(chat, dt.target);
 				}
 
-				chat.sequenceCallback(dt.sequenceId, true, dt.target);
+				chat._sequenceCallback(dt.sequenceId, true, dt.target);
 				break;
 
 			case PacketType.create_room:
 			case PacketType.remove_room:
-				chat.sequenceCallback(dt.sequenceId, true, dt.target);
+				chat._sequenceCallback(dt.sequenceId, true, dt.target);
 				break;
 
 			case PacketType.ping:
-				chat.sendRaw({
+				chat._sendRaw({
 					type: PacketType.ping,
 				});
 				break;
@@ -306,7 +302,7 @@ export class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 }
 
 class Room {
-	private wschat: WsChat;
+	private _wschat: WsChat;
 	target: string;
 	members: UserObject[];
 	memberId: number;
@@ -314,7 +310,7 @@ class Room {
 	private _joined: boolean;
 
 	constructor(wschat: WsChat, target: string) {
-		this.wschat = wschat;
+		this._wschat = wschat;
 		this.target = target;
 		this.members = [];
 
@@ -325,7 +321,7 @@ class Room {
 	}
 
 	sendMessage(text: string) {
-		this.wschat.sendRaw({
+		this._wschat._sendRaw({
 			type: PacketType.message,
 			target: this.target,
 			message: text,
@@ -338,19 +334,19 @@ class Room {
 	}
 
 	changeStatus(status: UserStatus) {
-		this.wschat.sendRaw({
+		this._wschat._sendRaw({
 			type: PacketType.status,
 			target: this.target,
 			status: status,
 		});
 	}
 
-	static joined(room: Room, dt: PacketJoin) {
+	static _joined(room: Room, dt: PacketJoin) {
 		room.memberId = dt.member_id;
 		room.memberNick = dt.login;
 	}
 
-	static onlineListChanged(room: Room, list: PacketStatus[], sequenceId: number) {
+	static _onlineListChanged(room: Room, list: PacketStatus[], sequenceId: number) {
 		for (let el of list) {
 			delete el.type;
 			el.typing = false;
@@ -359,11 +355,11 @@ class Room {
 
 		if (!room._joined) {
 			room._joined = true;
-			room.wschat.sequenceCallback(sequenceId, true, room);
+			room._wschat._sequenceCallback(sequenceId, true, room);
 		}
 	}
 
-	static userStatusChanged(room: Room, dt: UserObject) {
+	static _userStatusChanged(room: Room, dt: UserObject) {
 		switch (dt.status) {
 			case UserStatus.bad:
 				break;
@@ -421,7 +417,7 @@ class Room {
 				break;
 		}
 
-		room.wschat.emit(WsChatEvents.userStatusChange, room, dt);
+		room._wschat.emit(WsChatEvents.userStatusChange, room, dt);
 	}
 }
 
