@@ -2,6 +2,7 @@ import typescript from '@rollup/plugin-typescript';
 import resolve from '@rollup/plugin-node-resolve';
 import alias from '@rollup/plugin-alias';
 import {terser} from "rollup-plugin-terser";
+import ttypescript from 'ttypescript';
 
 const production = process.env.NODE_ENV === 'production';
 
@@ -18,6 +19,12 @@ function config(patch = {}) {
 				unsafe_methods: true, // f: function(){} -> f(){}
 				warnings: true,
 			},
+
+			mangle: {
+				properties: {
+					regex: /^_\w/,
+				},
+			}
 		}));
 	}
 
@@ -25,7 +32,7 @@ function config(patch = {}) {
 		output: {
 			compact: false,
 			strict: false,
-			// exports: 'default', // doesn't works with typescript and commonjs plugins
+			exports: 'named', // doesn't works with typescript and commonjs plugins
 			interop: false,
 			esModule: false,
 			externalLiveBindings: false,
@@ -37,7 +44,9 @@ function config(patch = {}) {
 		},
 
 		plugins: [
-			typescript(),
+			typescript({
+				typescript: ttypescript,
+			}),
 			alias({entries: aliases}),
 			resolve(),
 			...optinalPlugins,

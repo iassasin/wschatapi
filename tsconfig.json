@@ -8,13 +8,18 @@
 		"noImplicitThis": true,
 		"noImplicitAny": true,
 		"importHelpers": true,
-		"preserveWatchOutput": true
+		"preserveWatchOutput": true,
+		"preserveConstEnums": true,
+		"plugins": [
+			{"transform": "./transformers/constEnums.ts"}
+		]
 	},
 	"include": [
 		"./**/*",
 	],
 	"exclude": [
 		"node_modules",
+		"transformers",
 		"dist"
 	]
 }
