@@ -61,6 +61,8 @@ export class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 		sock.onclose = () => {
 			this.emit(WsChatEvents.close);
 			this._sock = null;
+			this._sequenceCallbacks = {};
+			this.off();
 		};
 		sock.onmessage = data => this._processMessage(data.data as string);
 		sock.onerror = err => this.emit(WsChatEvents.connectionError, err);
