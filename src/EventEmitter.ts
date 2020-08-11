@@ -34,14 +34,10 @@ export default class EventEmitter<Events extends EventCallbacks = EventCallbacks
 	off<T extends keyof Events>(name?: T, callback?: Events[T]) {
 		let subs = this.subscribers;
 
-		console.log(`call off ${name}`, callback);
-
 		if (!name) {
 			this.subscribers = {} as typeof subs;
 		} else if (subs[name]) {
-			console.log(`off ${name}`, subs[name]);
 			subs[name] = callback ? subs[name].filter(x => x !== callback && x._origCallback != callback) : [];
-			console.log(`off 2 ${name}`, subs[name]);
 		}
 	}
 
