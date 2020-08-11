@@ -61,7 +61,10 @@ export class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 		let sock = new WebSocket(this._address);
 
 		sock.onopen = () => this.emit(WsChatEvents.open);
-		sock.onclose = () => this.emit(WsChatEvents.close);
+		sock.onclose = () => {
+			this.emit(WsChatEvents.close);
+			this._sock = null;
+		};
 		sock.onmessage = data => this._processMessage(data.data as string);
 		sock.onerror = err => this.emit(WsChatEvents.connectionError, err);
 
