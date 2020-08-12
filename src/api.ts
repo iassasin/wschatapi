@@ -43,6 +43,8 @@ export class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 	private _sequenceId = 0;
 	rooms = [] as Room[];
 
+	get connected() { return !!this._sock; }
+
 	constructor(addr: string) {
 		super();
 		this._address = addr;
