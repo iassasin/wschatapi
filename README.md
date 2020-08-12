@@ -11,7 +11,7 @@ npm install @iassasin/wschatapi
 ```
 ## Быстрый старт
 ```javascript
-const {WsChat, WsChatEvents} = require('wschatapi');
+const {WsChat, WsChatEvents} = require('@iassasin/wschatapi');
 
 // в async функции:
 let chat = new WsChat('wss://sinair.ru/ws/chat');
