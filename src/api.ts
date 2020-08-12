@@ -63,6 +63,7 @@ export class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 			this._sock = null;
 			this._sequenceCallbacks = {};
 			this.off();
+			this.rooms = [];
 		};
 		sock.onmessage = data => this._processMessage(data.data as string);
 		sock.onerror = err => this.emit(WsChatEvents.connectionError, err);
