@@ -12,6 +12,7 @@ export const enum WsChatEvents {
 	message = 'message',
 	sysMessage = 'sysMessage',
 	userStatusChange = 'userStatusChange',
+	leaveRoom = 'leaveRoom',
 }
 
 type WsChatEventsDeclarations = {
@@ -22,6 +23,7 @@ type WsChatEventsDeclarations = {
 	message: (room: Room, msgobj: MessageObject) => void;
 	sysMessage: (room: Room, text: string) => void;
 	userStatusChange: (room: Room, user: UserObject) => void;
+	leaveRoom: (target: string) => void;
 }
 
 function deferred<T = any>() {
@@ -306,6 +308,8 @@ export class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 				}
 
 				chat._sequenceCallback(dt.sequenceId, false, dt.target);
+				chat.emit(WsChatEvents.leaveRoom, dt.target);
+
 				break;
 
 			case PacketType.create_room:
