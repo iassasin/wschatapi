@@ -307,8 +307,9 @@ export class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 					room = new Room(chat, dt.target);
 				}
 
-				chat._sequenceCallback(dt.sequenceId, false, dt.target);
-				chat.emit(WsChatEvents.leaveRoom, dt.target);
+				if (!chat._sequenceCallback(dt.sequenceId, false, dt.target)) {
+					chat.emit(WsChatEvents.leaveRoom, dt.target);
+				}
 
 				break;
 
