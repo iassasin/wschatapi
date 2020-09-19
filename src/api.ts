@@ -193,6 +193,10 @@ export class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 	}
 
 	_sendRaw(obj: Packet) {
+		if (!this.connected) {
+			throw new Error('WsChat is not connected');
+		}
+
 		this._sock.send(JSON.stringify(obj));
 	}
 

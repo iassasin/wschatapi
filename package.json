@@ -1,6 +1,6 @@
 {
   "name": "@iassasin/wschatapi",
-  "version": "2.0.0-rc.2",
+  "version": "2.0.0-rc.3",
   "description": "SinAir chat api",
   "homepage": "https://github.com/iassasin/wschatapi",
   "main": "dist/chat-api-node.js",
@@ -27,10 +27,10 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "clear": "rm -rf dist/",
-    "build": "NODE_ENV=production rollup -c && NODE_ENV=production npm run build:types",
+    "build": "rollup -c && npm run build:types",
     "build:types": "tsc -p tsconfig.json -d --emitDeclarationOnly --outDir dist/types",
     "watch": "rollup -cw",
-    "build-release": "npm run clear && npm run build"
+    "build-release": "npm run clear && NODE_ENV=production npm run build"
   },
   "license": "MIT",
   "peerDependencies": {
