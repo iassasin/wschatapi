@@ -1,106 +1,96 @@
 # wschatapi
-API для написания своих клиентов к чату https://sinair.ru/chat/
+API для написания своих клиентов к чату https://chat.sinair.ru/
 ## Установка
+Для использования в nodejs:
 ```
-npm install --save https://github.com/iassasin/wschatapi.git ws
+npm install @iassasin/wschatapi ws
 ```
-Для использования в браузере модуль ws устанавливать не нужно.
-## Использование
-После установки модуля, его использование в проекте аналогично другим:
+Для использования в браузере:
+```
+npm install @iassasin/wschatapi
+```
+## Быстрый старт
 ```javascript
-const WsChat = require('wschatapi');
-```
-Первым делом нужно создать подключение, затем назначить коллбеки и установить соединение.  
-Ниже приведен пример простого подключения и отправки сообщения:
-```javascript
+const {WsChat, WsChatEvents} = require('@iassasin/wschatapi');
+
+// в async функции:
 let chat = new WsChat('wss://sinair.ru/ws/chat');
-chat.onOpen = function(){
-	chat.joinRoom('#test', (success, room) => {
-		room.sendMessage('/nick testbot');
-		room.sendMessage('Привет, я бот!');
-		chat.close();
-	});
-};
-chat.open();
+await chat.open();
+
+chat.on(WsChatEvents.message, async (room, message) => {
+	if (message.message === 'Пока') {
+		room.sendMessage('Пока!');
+		await chat.close();
+	}
+});
+
+let room = await chat.joinRoom('#test');
+room.sendMessage('/nick testbot');
+room.sendMessage('Привет, я бот!');
 ```
 ## Методы API
 В API используются два класса, доступные пользователю:
 * `WsChat` - основной класс подключения и обработки событий;
 * `Room` - класс подключения к конкретной комнате, его нельзя инстанцировать вручную, но к нему появляется доступ после подключения к комнате.
 
+Также доступны несколько перечислений, которые удобно применять при использовании API:
+* `WsChatEvents` - доступные для подписки события клиента чата;
+* `MessageStyle` - стиль сообщения в чате;
+* `ErrorCode` - код ошибки, которую можно получить в результате некоторых операций;
+* `UserStatus` - возможные статусы пользователя.
+
 ### WsChat
 Представляет собой набор управляющих методов и событий.
 
-Каждый коллбек первым аргументом получает `success` - булевое значение, означающее, успешно ли завершилась операция. В случае, если `success` принимает значение `false`, вторым аргументом всегда будет объект, описывающий ошибку.
+Большая часть методов возвращает `Promise`, который разрешается в момент успешного завершения операции, либо отклоняется с объектом ошибки.
+Если ошибка возникла не в результате вызова подобного метода, то она уходит обработчику события `error`.
 
-Часть методов могут иметь коллбэки, которые (если заданы) перекрывают аналогичные глобальные обработчики событий. Чтобы глобальный обработчик вызывался в любом случае, необходимо из коллбэка вернуть значение `true`. Например:
-```javascript
-chat.onJoinedRoom = function(room){ /* ... */ };
-chat.joinRoom('#chat', function(success, room){
-	// ...
-	return true;
-});
-```
-
-Методы.  
-Ниже будет встречаться параметр `room` - объект класса `Room`.
-* `WsChat(address)` - конструктор класса, `address` - адрес websocket-сервера чата, например `wss://sinair.ru/ws/chat`;
-* `open()` - установить соединение с сервером;
-* `close()` - закрыть соединение с сервером;
-* `authByApiKey(key, callback(success, userinfo))` - выполнить авторизацию на сервере с помощью постоянного API-ключа (получается в профиле на сайте, рекомендуется для ботов);
-* `authByLoginAndPassword(login, password, callback(success, userinfo))` - выполнить авторизацию на сервере с помощью логина и пароля (**не рекомендуется для ботов!**);
-* `changeStatus(status)` - изменить свой статус. Допустимы только значения `UserStatus.away` и `UserStatus.back`;
-* `joinRoom(target, callback(success, room))` или `joinRoom(options)` - присоединиться к комнате `target`. Также можно передать вместо аргументов объект опций. Опции по-умолчанию следующие:
+Доступные методы:
+* `new WsChat(address: string)` - конструктор класса, `address` - адрес websocket-сервера чата, например `wss://sinair.ru/ws/chat`;
+* `open(): Promise<void>` - установить соединение с сервером;
+* `close(): Promise<void>` - закрыть соединение с сервером;
+* `authByApiKey(key: string): Promise<PacketAuth>` - выполнить авторизацию на сервере с помощью постоянного API-ключа (получается в профиле на сайте, рекомендуется для ботов);
+* `authByLoginAndPassword(login: string, password: string): Promise<PacketAuth>` - выполнить авторизацию на сервере с помощью логина и пароля (**не рекомендуется для ботов!**);
+* `changeStatus(status: UserStatus): void` - изменить свой статус. Допустимы только значения `UserStatus.away` и `UserStatus.back`;
+* `joinRoom(target: string, options?: JoinOptions): Promise<Room>` - присоединиться к комнате `target`. Также можно передать объект опций. Опции по-умолчанию следующие:
 ```
 {
-	target: '',
-	callback: null,
 	autoLogin: false, //автоматически войти в комнату с ником, который использовался в ней ранее (для авторизованных пользователей)
-	loadHistory: false, //загрузить последние 50 сообщений в комнате
+	loadHistory: false, //загрузить последние 50+ сообщений в комнате
 }
 ```
-* `leaveRoom(target, callback(success, room))` - покинуть комнату `target`;
-* `createRoom(target, callback(success))` - создать комнату с именем `target`;
-* `removeRoom(target, callback(success))` - удалить свою комнату с именем `target`;
-* `getConnectedRooms()` - получить список комнат, к которым были осуществлены подключения;
-* `getRoomByTarget(target)` - найти комнату с именем `target` в списке подключенных.
+* `leaveRoom(target: string): Promise<string>` - покинуть комнату `target`;
+* `createRoom(target: string): Promise<string>` - создать комнату с именем `target`;
+* `removeRoom(target: string): Promise<string>` - удалить свою комнату с именем `target`;
+* `getRoomByTarget(target: string): Room` - найти комнату с именем `target` в списке подключенных.
 
-События:
-* `onOpen()` - вызывается после подключения к серверу;
-* `onClose()` - вызывается после отключения от сервера;
-* `onConnectionError(error)` - вызывается при возникновении ошибки подключения;
-* `onError(error)` - вызывается для необработанных ошибок при работе с API чата;
-* `onJoinedRoom(room)` - вызывается после подключения к комнате;
-* `onLeaveRoom(room)` - вызывается после отключения от комнаты;
-* `onRoomCreated(target)` - вызывается после успешного создания комнаты `target`;
-* `onRoomRemoved(target)` - вызывается после успешного удаления комнаты `target`;
-* `onMessage(room, msgobj)` - вызывается, когда кто-то написал сообщение в комнату. `msgobj` - объект сообщения (будет описан ниже);
-* `onSysMessage(room, text)` - вызывается при получении системного сообщения. Когда сообщение не относится ни к одной комнате, `room` принимает значение `null`;
-* `onUserStatusChanged(room, userobj)` - вызывается при изменении статуса подключенного к комнате пользователя; `userobj` - объект информации о пользователе (будет описан ниже);
-* `onUserConnected(room, userobj)` - вызывается при подключении к комнате нового пользователя;
-* `onUserDisconnected(room, userobj)` - вызывается при отключении пользователя от комнаты.
+Доступные свойства:
+* `rooms: Room[]` - список комнат, к которым подключен клиент;
+* `connected: boolean` - возвращает `true`, если подключение к серверу установлено, иначе `false`.
+
+События (WsChatEvents):
+* `open` - вызывается после подключения к серверу;
+* `close` - вызывается после отключения от сервера;
+* `connectionError(error)` - вызывается при возникновении ошибки подключения;
+* `error(error)` - вызывается для необработанных ошибок при работе с API чата;
+* `message(room, msgobj)` - вызывается, когда кто-то написал сообщение в комнату. `msgobj` - объект сообщения (будет описан ниже);
+* `sysMessage(room, text)` - вызывается при получении системного сообщения. Когда сообщение не относится ни к одной комнате, `room` принимает значение `null`;
+* `userStatusChanged(room, userobj)` - вызывается при изменении статуса пользователя в комнате; `userobj` - объект информации о пользователе (будет описан ниже);
+* `leaveRoom(target)` - вызывается после исключения из комнаты; `target` - имя комнаты.
 
 ### Room
-Класс, предоставляющий набор методов и событий для конкретной комнаты. События по описанию аналогичны глобальным, поэтому могут не описываются повторно.
+Класс, предоставляющий набор методов для конкретной комнаты.
 
 Методы:
-* `sendMessage(text)` - отправить сообщение в комнату;
-* `changeStatus(status)` - изменить свой статус. Допустимы только следующие значения `UserStatus`: `away`, `back`, `typing`, `stop_typing`;
-* `getTarget()` - получить имя текущей комнаты;
-* `getMembers()` - получить список подключенных к текущей комнате пользователей (в виде массива объектов `userobj`);
-* `getMemberById(id)` - получить инфо пользователя по его id;
-* `getMyMemberId()` - получить свой id в комнате;
-* `getMyMemberNick()` - получить свой текущий ник в комнате.
+* `sendMessage(text: string)` - отправить сообщение в комнату;
+* `changeStatus(status: UserStatus)` - изменить свой статус. Допустимы только следующие значения `UserStatus`: `away`, `back`, `typing`, `stop_typing`;
+* `getMemberById(memberId: number)` - получить инфо пользователя по его id.
 
-События:
-* `onError(err)`;
-* `onSysMessage(message)`;
-* `onMessage(msgobj)`;
-* `onUserStatusChanged(user)`;
-* `onUserConnected(user)`;
-* `onUserDisconnected(user)`;
-* `onJoined()`;
-* `onLeave()`;
+Свойства:
+* `target: string` - кодовое имя комнаты, например `#chat`;
+* `members: UserObject[]` - список подключенных к комнате пользователей;
+* `memberId: number` - собственный комнатный id в рамках текущего подключения к комнате;
+* `memberNick: string` - собственный ник в комнате.
 
 ### UserStatus
 Перечисление всех возможных статусов пользователей:
@@ -148,8 +138,7 @@ chat.joinRoom('#chat', function(success, room){
 * `remove_room` - запрос на удаление комнаты;
 * `ping` - служебный пакет для проверки связи.
 
-### Объект сообщения (msgobj)
-Объект сообщения `msgobj`, используемый в обработчиках события `onMessage`, содержит следующие свойства:
+### Объект сообщения (MessageObject)
 * `id` (string?) - необязательное поле. id сообщения, присутствует только у публичных сообщений (в лс отсутствует).
 * `color` (string) - цвет никнейма отправителя сообщения;
 * `from` (int) - внутрикомнатный ID отправителя сообщения;
@@ -160,8 +149,7 @@ chat.joinRoom('#chat', function(success, room){
 * `time` (long) - время отправки сообщения в формате unixtime;
 * `to` (int) - внутрикомнатный ID получателя сообщения (0, если сообщение публичное).
 
-### Объект информации о пользователе (userobj)
-Объект информации о пользователе `userobj` используется в обработчиках событий `onUserStatusChanged`, `onUserConnected`, `onUserDisconnected`, а также в методах `getMemberById` и `getMembers`. Содержит в себе следующие свойства:
+### Объект информации о пользователе (UserObject)
 * `color` (string) - цвет никнейма пользователя;
 * `data` (string) - данные события (например, при смене никнейма содержит старый никнейм пользователя);
 * `girl` (bool) - имеет ли пользователь имеет женский пол;

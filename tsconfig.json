@@ -1,0 +1,25 @@
+{
+	"compilerOptions": {
+		"target": "ES2018",
+		"module": "ES2015",
+		"allowUnreachableCode": true,
+		"experimentalDecorators": true,
+		"noEmitOnError": false,
+		"noImplicitThis": true,
+		"noImplicitAny": true,
+		"importHelpers": true,
+		"preserveWatchOutput": true,
+		"preserveConstEnums": true,
+		"plugins": [
+			{"transform": "./transformers/constEnums.ts"}
+		]
+	},
+	"include": [
+		"./**/*",
+	],
+	"exclude": [
+		"node_modules",
+		"transformers",
+		"dist"
+	]
+}

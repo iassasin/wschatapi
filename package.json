@@ -1,8 +1,11 @@
 {
-  "name": "wschatapi",
-  "version": "1.6.0",
+  "name": "@iassasin/wschatapi",
+  "version": "2.0.0",
   "description": "SinAir chat api",
-  "main": "index.js",
+  "homepage": "https://github.com/iassasin/wschatapi",
+  "main": "dist/chat-api-node.js",
+  "browser": "dist/chat-api-browser.js",
+  "types": "dist/types/api.d.ts",
   "author": {
     "email": "iassasin@yandex.ru",
     "name": "iassasin",
@@ -12,11 +15,37 @@
     "type": "git",
     "url": "git+https://github.com/iassasin/wschatapi.git"
   },
+  "bugs": {
+    "url": "https://github.com/iassasin/wschatapi/issues"
+  },
+  "engines": {
+    "node": ">=10.0"
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "clear": "rm -rf dist/",
+    "build": "rollup -c && npm run build:types",
+    "build:types": "tsc -p tsconfig.json -d --emitDeclarationOnly --outDir dist/types",
+    "watch": "rollup -cw",
+    "build-release": "npm run clear && NODE_ENV=production npm run build"
   },
   "license": "MIT",
   "peerDependencies": {
     "ws": "*"
-  }
+  },
+  "devDependencies": {
+    "@rollup/plugin-alias": "^3.1.1",
+    "@rollup/plugin-node-resolve": "^8.4.0",
+    "@rollup/plugin-typescript": "^5.0.2",
+    "rollup": "^2.21.0",
+    "rollup-plugin-terser": "^6.1.0",
+    "ts-node": "^8.10.2",
+    "tslib": "^2.0.1",
+    "ttypescript": "^1.5.10",
+    "typescript": "^3.9.6"
+  },
+  "dependencies": {}
 }
