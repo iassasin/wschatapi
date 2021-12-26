@@ -57,6 +57,7 @@ export const enum UserStatus {
 	back = 7,
 	typing = 8,
 	stop_typing = 9,
+	orphan = 10,
 }
 
 export type PacketMessage = PacketBase & Partial<MessageObject> & {
@@ -82,6 +83,7 @@ export type PacketAuth = PacketBase & {
 	api_key?: string,
 	login?: string,
 	password?: string,
+	token?: string,
 }
 
 export type PacketJoin = PacketBase & {

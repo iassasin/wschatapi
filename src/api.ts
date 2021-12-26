@@ -12,6 +12,7 @@ export const enum WsChatEvents {
 	message = 'message',
 	sysMessage = 'sysMessage',
 	userStatusChange = 'userStatusChange',
+	joinRoom = 'joinRoom',
 	leaveRoom = 'leaveRoom',
 }
 
@@ -23,6 +24,7 @@ type WsChatEventsDeclarations = {
 	message: (room: Room, msgobj: MessageObject) => void;
 	sysMessage: (room: Room, text: string) => void;
 	userStatusChange: (room: Room, user: UserObject) => void;
+	joinRoom: (room: Room) => void;
 	leaveRoom: (target: string) => void;
 }
 
@@ -84,7 +86,7 @@ export class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 
 		let promise = this._promiseFromEvents(WsChatEvents.close, WsChatEvents.connectionError);
 
-		this._sock.close();
+		this._sock.close(1000); // 1000 == close_ok
 		this._sock = null;
 
 		return promise;
@@ -122,6 +124,18 @@ export class WsChat extends EventEmitter<WsChatEventsDeclarations> {
 			type: PacketType.auth,
 			login: login,
 			password: password,
+		});
+
+		return promise;
+	}
+
+	restoreConnection(token: string) {
+		let [promise, sequenceId] = this._createPromiseOnSequence<PacketAuth>();
+
+		this._sendRaw({
+			sequenceId,
+			type: PacketType.auth,
+			token,
 		});
 
 		return promise;
@@ -386,6 +400,10 @@ class Room {
 		if (!room._joined) {
 			room._joined = true;
 			room._wschat._sequenceCallback(sequenceId, false, room);
+
+			if (!room._wschat._sequenceCallback(sequenceId, false, room)) {
+				room._wschat.emit(WsChatEvents.joinRoom, room);
+			}
 		}
 	}
 
