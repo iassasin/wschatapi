@@ -44,11 +44,11 @@ function config(patch = {}) {
 		},
 
 		plugins: [
+			alias({entries: aliases}),
+			resolve(),
 			typescript({
 				typescript: ttypescript,
 			}),
-			alias({entries: aliases}),
-			resolve(),
 			...optinalPlugins,
 		],
 	}, other);
