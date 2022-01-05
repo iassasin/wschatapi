@@ -399,7 +399,6 @@ class Room {
 
 		if (!room._joined) {
 			room._joined = true;
-			room._wschat._sequenceCallback(sequenceId, false, room);
 
 			if (!room._wschat._sequenceCallback(sequenceId, false, room)) {
 				room._wschat.emit(WsChatEvents.joinRoom, room);
