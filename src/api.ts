@@ -462,6 +462,10 @@ class Room {
 			case UserStatus.stop_typing:
 				room.getMemberById(dt.member_id).typing = false;
 				break;
+
+			case UserStatus.orphan:
+				room.getMemberById(dt.member_id).status = UserStatus.orphan;
+				break;
 		}
 
 		room._wschat.emit(WsChatEvents.userStatusChange, room, dt);
